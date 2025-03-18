@@ -44,6 +44,27 @@ cd <tên project>
 cd spiders
 touch <ten file>.py
 ```
+```bash
+   TestProject
+    └── TestProject
+    ├── quotes.json
+    ├── scrapy.cfg
+    └── TestProject
+        ├── __init__.py
+        ├── items.py
+        ├── middlewares.py
+        ├── pipelines.py
+        ├── __pycache__
+        │   ├── __init__.cpython-312.pyc
+        │   └── settings.cpython-312.pyc
+        ├── settings.py
+        └── spiders <------------- ==Folder này==
+            ├── __init__.py
+            ├── __pycache__
+            │   ├── __init__.cpython-312.pyc
+            │   └── quotes_spider.cpython-312.pyc
+            └── quotes_spider.py <-------- ==File này==
+```
 
 3.  Thêm code vào file
 #### Ví dụ:
