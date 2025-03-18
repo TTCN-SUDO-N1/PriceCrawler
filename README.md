@@ -42,7 +42,7 @@ cd <tên project>
 2.  Tạo file trong folder spider
 ```bash
 cd spiders
-touch <ten file>,py
+touch <ten file>.py
 ```
 
 3.  Thêm code vào file
