@@ -46,7 +46,7 @@ touch <ten file>,py
 ```
 
 3.  Thêm code vào file
-Ví dụ:
+#### Ví dụ:
 ```python
 import scrapy
 
@@ -83,7 +83,7 @@ class QuotesSpider(scrapy.Spider):
     ]
 ```
 
-Ví dụ:
+### Ví dụ:
 ```bash
 cd ..
 scrapy crawl quotes -o quotes.json
