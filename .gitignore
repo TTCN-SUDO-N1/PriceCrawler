@@ -1,1 +1,35 @@
-./Crawler/*
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Environment variables and virtual environments
+.env
+*.env
+venv/
+ENV/
+env/
+
+# Logs and temporary files
+*.log
+*.tmp
+*.bak
+*.swp
+
+# Output files
+*.html
+
+# Browser drivers
+geckodriver
+chromedriver
+msedgedriver
+
+# Streamlit cache
+.streamlit/
+
+# System files
+.DS_Store
+Thumbs.db
+Crawler/*
+./Crawler/venv/
+./Crawler/*/
