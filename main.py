@@ -22,10 +22,13 @@ def scrape(url):
         sleep(2)  
         
         html = driver.page_source
+        htmlBody = clean.extractBody(html)
+        cleanedHtml = clean.cleanHtml(htmlBody)
+        
         urltxt = clean.cleanUrl(url)
         filename = urltxt+".html"  # Fixed filename for simplicity
         with open(filename, "w", encoding="utf-8") as f:
-            f.write(html)
+            f.write(cleanedHtml)
             print(f"HTML saved to {filename}")
         
         return html
@@ -36,5 +39,3 @@ def scrape(url):
         print("Driver closed.")
         
     return None
-
-scrape("https://phongvu.vn/c/may-tinh-de-ban")

@@ -8,6 +8,9 @@ url= st.text_input("Enter the URL of the product page:")
 if st.button("Get Price"):
     st.write("Fetching price...")
     result = main.scrape(url)
+    bodyContent = clean.extractBody(result)
+    cleanedHtml = clean.cleanHtml(bodyContent)
+    
     if result:
         urltxt = clean.cleanUrl(url)
         st.write("Fetched successfully!")
@@ -19,3 +22,8 @@ if st.button("Get Price"):
     else:
         st.write("Failed to fetch")
     
+    st.session_state.html_content = cleanedHtml
+    
+    with st.expander("Show Cleaned HTML"):
+        st.text_area("Cleaned HTML", cleanedHtml, height=300)
+        
