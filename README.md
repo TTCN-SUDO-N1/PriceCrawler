@@ -7,7 +7,7 @@ PriceCrawler là một ứng dụng Python được xây dựng để thu thập
 ### Cài đặt môi trường
 
 1. #### Cài đặt và kích hoạt môi trường ảo
-- Chay trong thư mục dự án của bạn
+- Chạy trong thư mục dự án của bạn
 ```bash
 python3 -m venv Crawler
 ```
