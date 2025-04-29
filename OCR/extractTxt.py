@@ -3,6 +3,7 @@ from PIL import Image # For opening image files
 import os
 from dotenv import load_dotenv
 import json
+import datetime
 load_dotenv()
 
 def Extract(imgURL, store_name): # Added store_name back
@@ -50,7 +51,7 @@ def Extract(imgURL, store_name): # Added store_name back
         output_filename = f"{store_name}.json"
 
         # Parse the response, update/create the JSON file
-        PraseResponse(response.text, output_filename, imgURL) # Pass imgURL for potential use inside PraseResponse if needed
+        PraseResponse(response.text, output_filename) # Pass imgURL for potential use inside PraseResponse if needed
 
     except Exception as e:
         print(f"\nAn error occurred during the API call or processing for {store_name}: {e}")
@@ -70,6 +71,9 @@ def PraseResponse(response_string, output_filename):
 
     try:
         new_product_data = json.loads(json_string)
+        now = datetime.datetime.now()
+        new_product_data["timestamp"] = now.isoformat()
+        
         # Optional: Add source image info to the new product data itself
         # new_product_data["source_image"] = os.path.basename(source_image_url)
     except json.JSONDecodeError as e:
@@ -91,7 +95,8 @@ def PraseResponse(response_string, output_filename):
             print(f"Warning: Could not decode JSON from existing file '{output_filename}'. Starting fresh.")
         except IOError as e:
             print(f"Warning: Could not read existing file '{output_filename}': {e}. Starting fresh.")
-
+    
+    
     all_products_data.append(new_product_data)
     
     try:

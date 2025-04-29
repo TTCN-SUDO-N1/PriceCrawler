@@ -24,6 +24,8 @@ def scrape(url):
         try:
             body = driver.find_element(By.TAG_NAME, "body")
             body.send_keys(Keys.ESCAPE)
+            sleep(1)
+            body.send_keys(Keys.ESCAPE)
         except Exception:
             pass
         sleep(1)
