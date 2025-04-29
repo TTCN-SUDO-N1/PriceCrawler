@@ -1,0 +1,49 @@
+[
+  {
+    "store_name": "",
+    "product_name": "Tai nghe AirPods 4 - Chính hãng Apple Việt Nam",
+    "sku": "MXP63ZP",
+    "rating": {
+      "stars": "",
+      "reviews_count": ""
+    },
+    "skus": [
+      {
+        "version": "AirPods Pro 2",
+        "price": "5.190.000 ₫",
+        "sku_id": ""
+      },
+      {
+        "version": "AirPods 4",
+        "price": "2.990.000 ₫",
+        "sku_id": ""
+      },
+      {
+        "version": "AirPods Max",
+        "price": "11.990.000 ₫",
+        "sku_id": ""
+      },
+      {
+        "version": "EarPods (USB-C)",
+        "price": "490.000 ₫",
+        "sku_id": ""
+      },
+      {
+        "version": "AirPods 4 (Chống Ồn)",
+        "price": "4.190.000 ₫",
+        "sku_id": ""
+      }
+    ],
+    "colors": [
+      {
+        "color": "Trắng",
+        "price": "",
+        "selected": true
+      }
+    ],
+    "current_price": "2.990.000 ₫",
+    "promotional_price": "2.954.000 ₫",
+    "promotion_details": "Dành riêng cho Hoàng Hà Member",
+    "installment_option": ""
+  }
+]

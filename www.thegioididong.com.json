@@ -1,0 +1,51 @@
+[
+  {
+    "store_name": "",
+    "product_name": "AirPods 4 MXP63",
+    "sku": "MXP63",
+    "rating": {
+      "stars": "4.9",
+      "reviews_count": "19400"
+    },
+    "skus": [
+      {
+        "version": "",
+        "price": "3.090.000₫",
+        "sku_id": "MXP63"
+      }
+    ],
+    "colors": [
+      {
+        "color": "White",
+        "price": "",
+        "selected": true
+      }
+    ],
+    "current_price": "3.490.000₫",
+    "promotional_price": "3.090.000₫",
+    "promotion_details": "-11%",
+    "installment_option": "Trả chậm 0%"
+  },
+  
+  {
+    "store_name": "",
+    "product_name": "Điện thoại iPhone 14 Plus 128GB",
+    "sku": "",
+    "rating": {
+      "stars": "4.9",
+      "reviews_count": "10,5k"
+    },
+    "skus": [
+      {
+        "version": "128GB",
+        "price": "17.990.000₫",
+        "sku_id": ""
+      }
+    ],
+    "colors": [],
+    "current_price": "17.990.000₫",
+    "promotional_price": "17.990.000₫",
+    "promotion_details": "-10%",
+    "installment_option": "Trả chậm 0%"
+  }
+]

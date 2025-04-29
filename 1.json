@@ -1,0 +1,27 @@
+{
+    "store_name":"" ,
+    "product_name": "",
+    "sku": "",
+    "rating": {
+      "stars": "",
+      "reviews_count":"" 
+    },
+    "skus": [
+      {
+        "version": "",
+        "price": "",
+        "sku_id": "",
+      },
+    ],
+    "colors": [
+      {
+        "color": "",
+        "price": "",
+        "selected": true/false
+      }
+    ],
+    "current_price": "",
+    "promotional_price": "",
+    "promotion_details": "",
+    "installment_option":"" 
+  }
