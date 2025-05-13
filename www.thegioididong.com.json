@@ -5,20 +5,51 @@
     "sku": "",
     "rating": {
       "stars": "4.9",
-      "reviews_count": "10500"
+      "reviews_count": "10,5k"
     },
-    "skus": [
+    "skus": [],
+    "colors": [
       {
-        "version": "128GB",
-        "price": "17.990.000₫",
-        "sku_id": ""
+        "color": "Đỏ",
+        "price": "",
+        "selected": false
+      },
+      {
+        "color": "Xanh Dương",
+        "price": "",
+        "selected": false
+      },
+      {
+        "color": "Tím",
+        "price": "",
+        "selected": false
+      },
+      {
+        "color": "Đen",
+        "price": "",
+        "selected": false
+      },
+      {
+        "color": "Trắng",
+        "price": "",
+        "selected": false
+      },
+      {
+        "color": "Vàng",
+        "price": "",
+        "selected": true
+      },
+      {
+        "color": "Tím nhạt",
+        "price": "",
+        "selected": false
       }
     ],
-    "colors": [],
-    "current_price": "19.990.000₫",
-    "promotional_price": "17.990.000₫",
+    "current_price": "17.990.000₫",
+    "promotional_price": "19.990.000₫",
     "promotion_details": "-10%",
-    "installment_option": "Trả chậm 0%",
-    "timestamp": "2025-04-29T20:42:04.593922"
+    "installment_option": "",
+    "out_of_stock": true,
+    "timestamp": "2025-05-07T09:12:02.989837"
   }
 ]

@@ -74,8 +74,6 @@ def PraseResponse(response_string, output_filename):
         now = datetime.datetime.now()
         new_product_data["timestamp"] = now.isoformat()
         
-        # Optional: Add source image info to the new product data itself
-        # new_product_data["source_image"] = os.path.basename(source_image_url)
     except json.JSONDecodeError as e:
         print(f"Error parsing new product JSON from response: {e}")
         print(f"Problematic string snippet: {json_string[:200]}...")

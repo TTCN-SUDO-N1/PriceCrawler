@@ -49,7 +49,7 @@ def scrape(url):
 
 
 # url=[input("Enter URL: ")]
-url=["https://www.thegioididong.com/dtdd/iphone-14-plus"]
+url=["https://clickbuy.com.vn/samsung-galaxy-a16-5g.html","https://karofi.com/may-loc-nuoc-nong-lanh-karofi-kad-x69.html"]
 
 for link in url:
     if link == "":
