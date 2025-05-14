@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Product Crawl Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
+</head>
+
+<body class="bg-gray-100 p-6">
+    <!-- Top buttons -->
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold text-gray-800">📊 Báo cáo Sản phẩm</h1>
+        <div class="space-x-2">
+            <button onclick="openAddProductModal()" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">➕ Thêm sản phẩm gốc</button>
+            <button onclick="refreshData()" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">🔄 Làm mới</button>
+        </div>
+    </div>
+    
+    <!-- Help Info Box -->
+    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+        <h2 class="text-lg font-semibold text-blue-700 mb-2">📌 Hướng dẫn sử dụng</h2>
+        <p class="text-blue-600 mb-2">Cách thức hoạt động của hệ thống:</p>
+        <ol class="list-decimal list-inside text-blue-600 ml-4 space-y-1">
+            <li><strong>Thêm sản phẩm gốc</strong> - Đây là sản phẩm của bạn mà bạn muốn theo dõi giá.</li>
+            <li><strong>Thêm sản phẩm đối thủ</strong> - Cho từng sản phẩm gốc, thêm link của đối thủ bán sản phẩm tương tự.</li>
+            <li><strong>Phân tích giá</strong> - Hệ thống sẽ crawl thông tin giá cả và lưu lịch sử để so sánh.</li>
+        </ol>
+        <div class="mt-3 text-blue-700 font-medium">
+            Lưu ý: Mỗi sản phẩm đối thủ phải liên kết với một sản phẩm gốc. Hệ thống không thể phân tích sản phẩm không có mối quan hệ với nhau.
+        </div>
+    </div>
+
+    <!-- Products Container -->
+    <div id="productsContainer">
+        <!-- Product cards will be loaded here -->
+        <div class="text-center py-10 text-gray-500">Loading products...</div>
+    </div>
+
+    <!-- Pagination Controls -->
+    <div id="paginationControls" class="flex justify-center items-center space-x-2 my-6 hidden">
+        <button id="prevPageBtn" class="bg-gray-200 text-gray-700 px-3 py-1 rounded hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed">
+            ← Trước
+        </button>
+        <div class="text-gray-700">
+            <span id="currentPage">1</span> / <span id="totalPages">1</span>
+        </div>
+        <button id="nextPageBtn" class="bg-gray-200 text-gray-700 px-3 py-1 rounded hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed">
+            Tiếp →
+        </button>
+        <select id="perPageSelect" class="bg-gray-100 text-gray-700 px-2 py-1 rounded border border-gray-300">
+            <option value="10">10 sản phẩm</option>
+            <option value="20">20 sản phẩm</option>
+            <option value="50">50 sản phẩm</option>
+        </select>
+    </div>
+
+    <!-- Add Product Modal -->
+    <div id="addProductModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 w-full max-w-md shadow-xl">
+            <h3 class="text-xl font-semibold mb-4">Thêm sản phẩm gốc</h3>
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Tên sản phẩm:</label>
+                    <input type="text" id="productName" class="w-full border border-gray-300 rounded px-3 py-2" placeholder="iPhone 15 Pro" />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">SKU:</label>
+                    <input type="text" id="productSKU" class="w-full border border-gray-300 rounded px-3 py-2" placeholder="IP15P-256G" />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Link sản phẩm:</label>
+                    <input type="text" id="productLink" class="w-full border border-gray-300 rounded px-3 py-2" placeholder="https://myshop.com/iphone15" />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Giá gốc:</label>
+                    <input type="text" id="productOrigPrice" class="w-full border border-gray-300 rounded px-3 py-2" placeholder="32,000,000 VND" />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Giá hiện tại:</label>
+                    <input type="text" id="productCurPrice" class="w-full border border-gray-300 rounded px-3 py-2" placeholder="29,990,000 VND" />
+                </div>
+            </div>
+            <div class="flex justify-end space-x-2 mt-6">
+                <button onclick="closeAddProductModal()" class="px-4 py-2 bg-gray-400 text-white rounded hover:bg-gray-500">Hủy</button>
+                <button onclick="addProduct()" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">💾 Lưu sản phẩm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Enemy Link Modal -->
+    <div id="addEnemyModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 w-full max-w-md shadow-xl">
+            <h3 class="text-xl font-semibold mb-4">Thêm sản phẩm đối thủ</h3>
+            <input type="hidden" id="currentProductId" value="" />
+            <label class="block text-sm font-medium text-gray-700 mb-1">Link sản phẩm:</label>
+            <input type="text" id="enemyLink" class="w-full border border-gray-300 rounded px-3 py-2 mb-4" placeholder="https://example.com/product123" />
+            <div class="flex justify-end space-x-2">
+                <button onclick="closeEnemyModal()" class="px-4 py-2 bg-gray-400 text-white rounded hover:bg-gray-500">Hủy</button>
+                <button onclick="addEnemyLink()" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">🚀 Chạy Crawl</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script>
+        // Global state
+        let currentProductId = null;
+        let currentPage = 1;
+        let perPage = 10;
+        let totalPages = 1;
+
+        // Load all products on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set up event listeners for pagination
+            document.getElementById('prevPageBtn').addEventListener('click', () => {
+                if (currentPage > 1) {
+                    currentPage--;
+                    loadProducts();
+                }
+            });
+            
+            document.getElementById('nextPageBtn').addEventListener('click', () => {
+                if (currentPage < totalPages) {
+                    currentPage++;
+                    loadProducts();
+                }
+            });
+            
+            document.getElementById('perPageSelect').addEventListener('change', (e) => {
+                perPage = parseInt(e.target.value);
+                currentPage = 1;  // Reset to first page
+                loadProducts();
+            });
+            
+            loadProducts();
+            addCrawlButtonToForm();
+        });
+
+        function loadProducts() {
+            axios.get(`/api/products?page=${currentPage}&per_page=${perPage}`)
+                .then(function(response) {
+                    const products = response.data.products;
+                    const pagination = response.data.pagination;
+                    const container = document.getElementById('productsContainer');
+                    
+                    // Update pagination state
+                    if (pagination) {
+                        currentPage = pagination.page;
+                        totalPages = pagination.total_pages;
+                        
+                        // Update UI
+                        document.getElementById('currentPage').textContent = currentPage;
+                        document.getElementById('totalPages').textContent = totalPages;
+                        document.getElementById('prevPageBtn').disabled = !pagination.has_prev;
+                        document.getElementById('nextPageBtn').disabled = !pagination.has_next;
+                        
+                        // Show/hide pagination controls
+                        document.getElementById('paginationControls').classList.toggle('hidden', pagination.total <= perPage);
+                    }
+                    
+                    if (products.length === 0) {
+                        container.innerHTML = '<div class="text-center py-10 text-gray-500">No products found. Add a product to get started.</div>';
+                        return;
+                    }
+                    
+                    let html = '';
+                    products.forEach(product => {
+                        html += createProductCard(product);
+                    });
+                    
+                    container.innerHTML = html;
+                    
+                    // Load enemy products for each product on the current page
+                    products.forEach(product => {
+                        loadEnemyProducts(product.id);
+                    });
+                })
+                .catch(function(error) {
+                    console.error('Error loading products:', error);
+                    document.getElementById('productsContainer').innerHTML = `
+                        <div class="text-center py-10 text-red-500">
+                            Error loading products: ${error.response?.data?.error || error.message || 'Unknown error'}
+                        </div>
+                    `;
+                    
+                    // Hide pagination on error
+                    document.getElementById('paginationControls').classList.add('hidden');
+                });
+                };
+
+        function createProductCard(product) {
+            return `
+                <div class="bg-white rounded-lg shadow-md mb-6 overflow-hidden">
+                    <div class="p-4">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h2 class="text-xl font-semibold text-gray-800">${product.name}</h2>
+                                <p class="text-sm text-gray-500">SKU: ${product.sku || 'N/A'}</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-sm text-gray-500">Giá gốc:</p>
+                                <p class="font-medium text-gray-800">${product.org_price || 'N/A'}</p>
+                                <p class="text-sm text-gray-500 mt-1">Giá hiện tại:</p>
+                                <p class="font-medium text-green-600">${product.cur_price || 'N/A'}</p>
+                            </div>
+                        </div>
+                        
+                        ${product.link ? `
+                            <div class="mt-3">
+                                <a href="${product.link}" target="_blank" class="text-sm text-blue-600 hover:underline">
+                                    ${product.link}
+                                </a>
+                            </div>
+                        ` : ''}
+                        
+                        <div class="mt-4 flex justify-between items-center">
+                            <div class="flex space-x-2">
+                                <button onclick="openEnemyModal(${product.id})" class="bg-blue-500 text-white px-3 py-1.5 rounded text-sm hover:bg-blue-600">
+                                    ➕ Thêm đối thủ
+                                </button>
+                                <button onclick="crawlAllEnemies(${product.id})" class="bg-purple-500 text-white px-3 py-1.5 rounded text-sm hover:bg-purple-600 flex items-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                    </svg>
+                                    Cập nhật tất cả giá
+                                </button>
+                            </div>
+                            <a href="/products?id=${product.id}" class="text-blue-600 hover:text-blue-800 text-sm">
+                                Xem chi tiết →
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <div class="border-t border-gray-200">
+                        <div class="p-4" id="enemyProducts-${product.id}">
+                            <div class="flex justify-between items-center mb-2">
+                                <h3 class="font-medium text-gray-700">Sản phẩm đối thủ</h3>
+                                <button onclick="loadEnemyProducts(${product.id})" class="text-sm text-blue-600 hover:text-blue-800">
+                                    🔄 Làm mới
+                                </button>
+                            </div>
+                            <div class="text-sm text-gray-500 text-center py-2">
+                                Loading...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function loadEnemyProducts(productId) {
+            const container = document.getElementById(`enemyProducts-${productId}`);
+            container.innerHTML = `
+                <div class="flex justify-between items-center mb-2">
+                    <h3 class="font-medium text-gray-700">Sản phẩm đối thủ</h3>
+                    <button onclick="loadEnemyProducts(${productId})" class="text-sm text-blue-600 hover:text-blue-800">
+                        🔄 Làm mới
+                    </button>
+                </div>
+                <div class="text-sm text-gray-500 text-center py-2">
+                    Loading...
+                </div>
+            `;
+            
+            axios.get(`/api/products/${productId}/enemies`)
+                .then(function(response) {
+                    const enemies = response.data.enemies;
+                    
+                    let html = `
+                        <div class="flex justify-between items-center mb-2">
+                            <h3 class="font-medium text-gray-700">Sản phẩm đối thủ</h3>
+                            <button onclick="loadEnemyProducts(${productId})" class="text-sm text-blue-600 hover:text-blue-800">
+                                🔄 Làm mới
+                            </button>
+                        </div>
+                    `;
+                    
+                    if (enemies.length === 0) {
+                        html += `
+                            <div class="text-sm text-gray-500 text-center py-2">
+                                Chưa có sản phẩm đối thủ nào. Thêm đối thủ để theo dõi giá.
+                            </div>
+                        `;
+                    } else {
+                        html += `
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead>
+                                        <tr>
+                                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Website</th>
+                                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Giá mới nhất</th>
+                                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cập nhật lúc</th>
+                                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Số lần cập nhật</th>
+                                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hành động</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="bg-white divide-y divide-gray-200">
+                        `;
+                        
+                        enemies.forEach(enemy => {
+                            html += `
+                                <tr>
+                                    <td class="px-3 py-2 whitespace-nowrap">
+                                        <div class="text-sm font-medium text-gray-900">${enemy.enemy_name}</div>
+                                        <div class="text-xs text-gray-500">
+                                            <a href="${enemy.link}" target="_blank" class="hover:underline">
+                                                ${enemy.link.substring(0, 30)}${enemy.link.length > 30 ? '...' : ''}
+                                            </a>
+                                        </div>
+                                    </td>
+                                    <td class="px-3 py-2 whitespace-nowrap text-sm">
+                                        <div class="flex items-center">
+                                            ${enemy.latest_price || 'N/A'}
+                                            ${enemy.price_trend === 'up' ? 
+                                              '<span class="ml-1 text-red-500">▲</span>' : 
+                                              (enemy.price_trend === 'down' ? 
+                                                '<span class="ml-1 text-green-500">▼</span>' : 
+                                                '')}
+                                        </div>
+                                    </td>
+                                    <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
+                                        ${enemy.updated_at || 'N/A'}
+                                    </td>
+                                    <td class="px-3 py-2 whitespace-nowrap text-sm">
+                                        ${enemy.log_count || 0}
+                                    </td>
+                                    <td class="px-3 py-2 whitespace-nowrap text-sm">
+                                        <button onclick="crawlSingleUrl(${enemy.crawl_id})" class="bg-blue-500 text-white px-2 py-1 rounded text-xs hover:bg-blue-600" id="crawl-btn-${enemy.crawl_id}">
+                                            🔄 Cập nhật giá
+                                        </button>
+                                    </td>
+                                </tr>
+                            `;
+                        });
+                        
+                        html += `
+                                    </tbody>
+                                </table>
+                            </div>
+                        `;
+                    }
+                    
+                    container.innerHTML = html;
+                })
+                .catch(function(error) {
+                    console.error(`Error loading enemy products for product ${productId}:`, error);
+                    container.innerHTML = `
+                        <div class="flex justify-between items-center mb-2">
+                            <h3 class="font-medium text-gray-700">Sản phẩm đối thủ</h3>
+                            <button onclick="loadEnemyProducts(${productId})" class="text-sm text-blue-600 hover:text-blue-800">
+                                🔄 Làm mới
+                            </button>
+                        </div>
+                        <div class="text-sm text-red-500 text-center py-2">
+                            Error loading enemy products: ${error.response?.data?.error || error.message || 'Unknown error'}
+                        </div>
+                    `;
+                });
+        }
+
+        function openAddProductModal() {
+            document.getElementById('addProductModal').classList.remove('hidden');
+            document.getElementById('addProductModal').classList.add('flex');
+        }
+
+        function closeAddProductModal() {
+            document.getElementById('addProductModal').classList.add('hidden');
+            document.getElementById('addProductModal').classList.remove('flex');
+            // Clear form fields
+            document.getElementById('productName').value = '';
+            document.getElementById('productSKU').value = '';
+            document.getElementById('productLink').value = '';
+            document.getElementById('productOrigPrice').value = '';
+            document.getElementById('productCurPrice').value = '';
+        }
+
+        function addProduct() {
+            const name = document.getElementById('productName').value;
+            if (!name) {
+                alert('Tên sản phẩm không được để trống!');
+                return;
+            }
+            
+            const productData = {
+                name: name,
+                sku: document.getElementById('productSKU').value,
+                link: document.getElementById('productLink').value,
+                org_price: document.getElementById('productOrigPrice').value,
+                cur_price: document.getElementById('productCurPrice').value
+            };
+            
+            axios.post('/api/products', productData)
+                .then(function(response) {
+                    closeAddProductModal();
+                    loadProducts();
+                    alert(`Sản phẩm "${name}" đã được thêm thành công!`);
+                })
+                .catch(function(error) {
+                    console.error('Error adding product:', error);
+                    alert(`Lỗi khi thêm sản phẩm: ${error.response?.data?.error || error.message || 'Unknown error'}`);
+                });
+        }
+
+        function openEnemyModal(productId) {
+            currentProductId = productId;
+            document.getElementById('currentProductId').value = productId;
+            document.getElementById('addEnemyModal').classList.remove('hidden');
+            document.getElementById('addEnemyModal').classList.add('flex');
+        }
+
+        function closeEnemyModal() {
+            document.getElementById('addEnemyModal').classList.add('hidden');
+            document.getElementById('addEnemyModal').classList.remove('flex');
+            document.getElementById('enemyLink').value = '';
+        }
+
+        function addEnemyLink() {
+            const link = document.getElementById('enemyLink').value;
+            const productId = document.getElementById('currentProductId').value;
+            
+            if (!link) {
+                alert('Link sản phẩm đối thủ không được để trống!');
+                return;
+            }
+            
+            axios.post(`/api/products/${productId}/enemies`, { link: link })
+                .then(function(response) {
+                    closeEnemyModal();
+                    loadEnemyProducts(productId);
+                    alert(`Link sản phẩm đối thủ đã được thêm và xử lý thành công!`);
+                })
+                .catch(function(error) {
+                    console.error('Error adding enemy link:', error);
+                    alert(`Lỗi khi thêm link sản phẩm đối thủ: ${error.response?.data?.error || error.message || 'Unknown error'}`);
+                });
+        }
+
+        function crawlSingleUrl(url, crawlId) {
+            // Show loading state by updating the button text
+            const button = event.target;
+            const originalButtonText = button.innerHTML;
+            button.disabled = true;
+            button.innerHTML = '⏳ Đang cập nhật...';
+            
+            axios.post('/api/crawl', { url: url, crawl_id: crawlId })
+                .then(function(response) {
+                    button.innerHTML = '✅ Hoàn tất!';
+                    setTimeout(() => {
+                        button.innerHTML = originalButtonText;
+                        button.disabled = false;
+                    }, 1500);
+                    
+                    // Refresh the product list to show updated prices
+                    loadEnemyProducts(currentProductId);
+                })
+                .catch(function(error) {
+                    console.error('Error crawling URL:', error);
+                    button.innerHTML = '❌ Lỗi';
+                    setTimeout(() => {
+                        button.innerHTML = originalButtonText;
+                        button.disabled = false;
+                    }, 1500);
+                    alert(`Lỗi khi crawl URL: ${error.response?.data?.error || error.message || 'Unknown error'}`);
+                });
+        }
+
+        function crawlSingleUrl(crawlId) {
+            // Get the button and store its original text
+            const button = document.getElementById(`crawl-btn-${crawlId}`);
+            const originalButtonText = button.innerHTML;
+            
+            // Set loading state
+            button.disabled = true;
+            button.innerHTML = '⏳ Đang cập nhật...';
+            
+            axios.post(`/api/crawl/single/${crawlId}`)
+                .then(function(response) {
+                    // Success state
+                    if (response.data.status === "completed") {
+                        button.innerHTML = '✅ Đã cập nhật!';
+                        button.classList.remove('bg-blue-500', 'hover:bg-blue-600');
+                        button.classList.add('bg-green-500', 'hover:bg-green-600');
+                    } else {
+                        // Failed state but API responded
+                        button.innerHTML = '❌ Lỗi';
+                        button.classList.remove('bg-blue-500', 'hover:bg-blue-600');
+                        button.classList.add('bg-red-500', 'hover:bg-red-600');
+                        console.error('Crawl error:', response.data.error);
+                    }
+                    
+                    // Reset button after delay
+                    setTimeout(() => {
+                        button.innerHTML = originalButtonText;
+                        button.classList.remove('bg-green-500', 'hover:bg-green-600', 'bg-red-500', 'hover:bg-red-600');
+                        button.classList.add('bg-blue-500', 'hover:bg-blue-600');
+                        button.disabled = false;
+                        
+                        // Refresh the product data to show updated price
+                        const productId = getCurrentProductId(crawlId);
+                        if (productId) {
+                            loadEnemyProducts(productId);
+                        }
+                    }, 2000);
+                })
+                .catch(function(error) {
+                    // Network or server error
+                    console.error('Error crawling URL:', error);
+                    button.innerHTML = '❌ Lỗi';
+                    button.classList.remove('bg-blue-500', 'hover:bg-blue-600');
+                    button.classList.add('bg-red-500', 'hover:bg-red-600');
+                    
+                    // Reset button after delay
+                    setTimeout(() => {
+                        button.innerHTML = originalButtonText;
+                        button.classList.remove('bg-red-500', 'hover:bg-red-600');
+                        button.classList.add('bg-blue-500', 'hover:bg-blue-600');
+                        button.disabled = false;
+                    }, 1500);
+                    
+                    // Only show alert for serious errors
+                    if (error.response?.status >= 500) {
+                        alert(`Lỗi máy chủ khi cập nhật giá: ${error.response?.data?.error || error.message || 'Unknown error'}`);
+                    }
+                });
+        }
+        
+        // Helper function to get the product ID from a crawl context
+        function getCurrentProductId(crawlId) {
+            // Look through all enemy containers to find which product this crawl belongs to
+            const containers = document.querySelectorAll('[id^="enemyProducts-"]');
+            for (const container of containers) {
+                const productId = container.id.split('-')[1];
+                if (container.innerHTML.includes(`crawl-btn-${crawlId}`)) {
+                    return productId;
+                }
+            }
+            return null;
+        }
+
+        function crawlAllEnemies(productId) {
+            // Show loading state by updating the button text
+            const button = event.target.closest('button');
+            const originalButtonText = button.innerHTML;
+            button.disabled = true;
+            button.innerHTML = '⏳ Đang cập nhật tất cả...';
+            
+            axios.post(`/api/crawl/all/${productId}`)
+                .then(function(response) {
+                    const successCount = response.data.success_count || 0;
+                    const totalCount = response.data.total_count || 0;
+                    
+                    button.innerHTML = `✅ Đã cập nhật ${successCount}/${totalCount} sản phẩm!`;
+                    button.classList.remove('bg-purple-500', 'hover:bg-purple-600');
+                    button.classList.add('bg-green-500', 'hover:bg-green-600');
+                    
+                    setTimeout(() => {
+                        button.innerHTML = originalButtonText;
+                        button.classList.remove('bg-green-500', 'hover:bg-green-600');
+                        button.classList.add('bg-purple-500', 'hover:bg-purple-600');
+                        button.disabled = false;
+                    }, 2000);
+                    
+                    // Refresh the enemy products list
+                    loadEnemyProducts(productId);
+                })
+                .catch(function(error) {
+                    console.error('Error crawling all enemies:', error);
+                    button.innerHTML = '❌ Lỗi';
+                    button.classList.remove('bg-purple-500', 'hover:bg-purple-600');
+                    button.classList.add('bg-red-500', 'hover:bg-red-600');
+                    
+                    setTimeout(() => {
+                        button.innerHTML = originalButtonText;
+                        button.classList.remove('bg-red-500', 'hover:bg-red-600');
+                        button.classList.add('bg-purple-500', 'hover:bg-purple-600');
+                        button.disabled = false;
+                    }, 1500);
+                    
+                    // Only show alert for serious errors
+                    if (error.response?.status >= 500) {
+                        alert(`Lỗi máy chủ khi cập nhật giá: ${error.response?.data?.error || error.message || 'Unknown error'}`);
+                    } else {
+                        console.log(`Crawl error: ${error.response?.data?.error || error.message || 'Unknown error'}`);
+                    }
+                });
+        }
+
+        function refreshData() {
+            axios.get('/api/refresh')
+                .then(function(response) {
+                    loadProducts();
+                    alert('Dữ liệu đã được làm mới!');
+                })
+                .catch(function(error) {
+                    console.error('Error refreshing data:', error);
+                    alert(`Lỗi khi làm mới dữ liệu: ${error.response?.data?.error || error.message || 'Unknown error'}`);
+                });
+        }
+
+        // Add a crawl button to the product form
+        function addCrawlButtonToForm() {
+            const saveBtn = document.querySelector('[onclick="addProduct()"]');
+            if (saveBtn) {
+                const crawlBtn = document.createElement('button');
+                crawlBtn.type = 'button';
+                crawlBtn.className = 'px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 mr-2';
+                crawlBtn.innerHTML = '🚀 Crawl sản phẩm';
+                crawlBtn.onclick = crawlOriginalProduct;
+                
+                saveBtn.parentNode.insertBefore(crawlBtn, saveBtn);
+            }
+        }
+
+        // Function to crawl an original product
+        function crawlOriginalProduct() {
+            const link = document.getElementById('productLink').value;
+            if (!link) {
+                alert('Link sản phẩm không được để trống!');
+                return;
+            }
+            
+            const name = document.getElementById('productName').value;
+            const sku = document.getElementById('productSKU').value;
+            
+            axios.post('/api/crawl', { 
+                url: link, 
+                is_original: true,
+                product_name: name,
+                product_sku: sku
+            })
+                .then(function(response) {
+                    alert(`Sản phẩm đã được crawl thành công! Dữ liệu từ crawl sẽ được sử dụng để tự động điền thông tin sản phẩm.`);
+                })
+                .catch(function(error) {
+                    console.error('Error crawling product:', error);
+                    alert(`Lỗi khi crawl sản phẩm: ${error.response?.data?.error || error.message || 'Unknown error'}`);
+                });
+        }
+    </script>
+</body>
+
+</html>

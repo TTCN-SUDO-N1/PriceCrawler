@@ -1,0 +1,818 @@
+/* 
+ * products.html
+ * Display page for all products with their competitor information
+ */
+
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Products Dashboard - Compare Prices</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+    <style>
+        .price-trend {
+            height: 40px;
+            display: flex;
+            align-items: flex-end;
+        }
+        
+        .price-bar {
+            width: 8px;
+            margin-right: 2px;
+            background-color: #10B981;
+            border-radius: 1px;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+            margin-top: 20px;
+        }
+        
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(255, 255, 255, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+        
+        .price-change-up {
+            color: #EF4444;
+        }
+        
+        .price-change-down {
+            color: #10B981;
+        }
+        
+        .price-change-same {
+            color: #6B7280;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100">
+    <div class="container mx-auto px-4 py-6">
+        <!-- Header -->
+        <div class="flex justify-between items-center mb-6">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-800">📊 Product Price Comparison</h1>
+                <p class="text-gray-600">Track and compare prices across different websites</p>
+            </div>
+            <div class="flex space-x-2">
+                <a href="/" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">🏠 Home</a>
+                <button onclick="refreshProductList()" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">🔄 Refresh</button>
+            </div>
+        </div>
+
+        <!-- Search -->
+        <div class="bg-white rounded-lg shadow p-4 mb-6">
+            <div class="flex items-center">
+                <input 
+                    id="searchInput" 
+                    type="text" 
+                    placeholder="Search for products..." 
+                    class="flex-grow border border-gray-300 rounded-l px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                <button 
+                    onclick="searchProducts()" 
+                    class="bg-blue-500 text-white px-4 py-2 rounded-r hover:bg-blue-600"
+                >
+                    🔍 Search
+                </button>
+            </div>
+        </div>
+
+        <!-- Products -->
+        <div id="productsList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Products will be loaded here -->
+            <div class="col-span-full text-center py-10 text-gray-500">Loading products...</div>
+        </div>
+
+        <!-- Product Detail Modal -->
+        <div id="productDetailModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 overflow-auto pt-20">
+            <div class="bg-white rounded-lg p-6 w-full max-w-4xl shadow-xl mb-20 mx-4">
+                <div class="flex justify-between items-start mb-4">
+                    <h3 id="detailProductName" class="text-xl font-semibold">Product Details</h3>
+                    <button onclick="closeProductDetailModal()" class="text-gray-500 hover:text-gray-700">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+                
+                <div id="productDetailContent" class="mt-4">
+                    <!-- Product details will be loaded here -->
+                    <div class="animate-pulse">
+                        <div class="h-6 bg-gray-200 rounded w-3/4 mb-4"></div>
+                        <div class="h-4 bg-gray-200 rounded w-1/2 mb-2"></div>
+                        <div class="h-4 bg-gray-200 rounded w-2/3 mb-2"></div>
+                        <div class="h-4 bg-gray-200 rounded w-1/3 mb-6"></div>
+                        
+                        <div class="h-8 bg-gray-200 rounded w-full mb-4"></div>
+                        <div class="grid grid-cols-3 gap-4 mb-6">
+                            <div class="h-20 bg-gray-200 rounded"></div>
+                            <div class="h-20 bg-gray-200 rounded"></div>
+                            <div class="h-20 bg-gray-200 rounded"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global state
+        let allProducts = [];
+        let currentProduct = null;
+        let currentProductId = null;
+        let priceHistoryChart = null;
+        let priceHistoryData = {};
+
+        // Initial load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadProducts();
+            
+            // Add enter key event for search
+            document.getElementById('searchInput').addEventListener('keyup', function(event) {
+                if (event.key === 'Enter') {
+                    searchProducts();
+                }
+            });
+            
+            // Add event listeners for chart controls
+            document.getElementById('timeRangeSelect').addEventListener('change', function() {
+                if (currentProductId) {
+                    updatePriceHistoryChart();
+                }
+            });
+            
+            document.getElementById('showAllCompetitors').addEventListener('change', function() {
+                if (currentProductId) {
+                    updatePriceHistoryChart();
+                }
+            });
+        });
+
+        // Load all products
+        function loadProducts() {
+            document.getElementById('productsList').innerHTML = '<div class="col-span-full text-center py-10 text-gray-500">Loading products...</div>';
+            
+            axios.get('/api/products')
+                .then(function(response) {
+                    allProducts = response.data.products;
+                    renderProducts(allProducts);
+                })
+                .catch(function(error) {
+                    document.getElementById('productsList').innerHTML = 
+                        `<div class="col-span-full text-center py-10 text-red-500">
+                            Error loading products: ${error.message || 'Unknown error'}
+                        </div>`;
+                    console.error('Error loading products:', error);
+                });
+        }
+        
+        // Render product cards
+        function renderProducts(products) {
+            const container = document.getElementById('productsList');
+            
+            if (products.length === 0) {
+                container.innerHTML = '<div class="col-span-full text-center py-10 text-gray-500">No products found.</div>';
+                return;
+            }
+            
+            let html = '';
+            products.forEach(product => {
+                html += `
+                    <div class="bg-white rounded-lg shadow overflow-hidden hover:shadow-lg transition-shadow">
+                        <div class="p-4">
+                            <h3 class="text-lg font-semibold text-gray-800 mb-1">${product.name}</h3>
+                            <p class="text-sm text-gray-500 mb-3">SKU: ${product.sku || 'N/A'}</p>
+                            
+                            <div class="flex justify-between items-center mb-4">
+                                <div>
+                                    <p class="text-sm text-gray-500">Original Price:</p>
+                                    <p class="font-semibold text-gray-700">${product.org_price || 'N/A'}</p>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-sm text-gray-500">Current Price:</p>
+                                    <p class="font-semibold text-green-600">${product.cur_price || 'N/A'}</p>
+                                </div>
+                            </div>
+                            
+                            <div class="text-sm mb-3">
+                                <span class="text-gray-500">Competitor Sites:</span>
+                                <span class="font-medium">${product.competitor_count || 0}</span>
+                            </div>
+                            
+                            <div class="flex justify-end">
+                                <button onclick="viewProductDetails(${product.id})" class="text-blue-600 hover:text-blue-800 px-3 py-1 text-sm">
+                                    View Details
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+        }
+        
+        // Search products
+        function searchProducts() {
+            const query = document.getElementById('searchInput').value.trim();
+            
+            if (query.length < 2) {
+                alert('Please enter at least 2 characters to search');
+                return;
+            }
+            
+            document.getElementById('productsList').innerHTML = '<div class="col-span-full text-center py-10 text-gray-500">Searching...</div>';
+            
+            axios.get(`/api/products/search?q=${encodeURIComponent(query)}`)
+                .then(function(response) {
+                    renderProducts(response.data.products);
+                })
+                .catch(function(error) {
+                    document.getElementById('productsList').innerHTML = 
+                        `<div class="col-span-full text-center py-10 text-red-500">
+                            Error searching products: ${error.message || 'Unknown error'}
+                        </div>`;
+                    console.error('Error searching products:', error);
+                });
+        }
+        
+        // Refresh product list
+        function refreshProductList() {
+            loadProducts();
+        }
+        
+        // View product details
+        function viewProductDetails(productId) {
+            document.getElementById('productDetailModal').classList.remove('hidden');
+            document.getElementById('productDetailModal').classList.add('flex');
+            document.body.style.overflow = 'hidden';
+            
+            // Save current product ID
+            currentProductId = productId;
+            
+            // Reset detail view with loading state
+            document.getElementById('detailProductName').textContent = 'Loading product details...';
+            document.getElementById('productDetailContent').innerHTML = `
+                <div class="animate-pulse">
+                    <div class="h-6 bg-gray-200 rounded w-3/4 mb-4"></div>
+                    <div class="h-4 bg-gray-200 rounded w-1/2 mb-2"></div>
+                    <div class="h-4 bg-gray-200 rounded w-2/3 mb-2"></div>
+                    <div class="h-4 bg-gray-200 rounded w-1/3 mb-6"></div>
+                    
+                    <div class="h-8 bg-gray-200 rounded w-full mb-4"></div>
+                    <div class="grid grid-cols-3 gap-4 mb-6">
+                        <div class="h-20 bg-gray-200 rounded"></div>
+                        <div class="h-20 bg-gray-200 rounded"></div>
+                        <div class="h-20 bg-gray-200 rounded"></div>
+                    </div>
+                </div>
+            `;
+            
+            // Fetch product details
+            axios.get(`/api/products/${productId}`)
+                .then(function(response) {
+                    currentProduct = response.data;
+                    renderProductDetails(currentProduct);
+                    
+                    // Load price history data after rendering details
+                    loadPriceHistory(productId);
+                })
+                .catch(function(error) {
+                    document.getElementById('productDetailContent').innerHTML = `
+                        <div class="text-center py-10 text-red-500">
+                            Error loading product details: ${error.message || 'Unknown error'}
+                        </div>
+                    `;
+                    console.error('Error loading product details:', error);
+                });
+        }
+        
+        // Load price history data
+        function loadPriceHistory(productId) {
+            // Show loading overlay
+            document.getElementById('chartLoadingOverlay').style.display = 'flex';
+            
+            axios.get(`/api/products/${productId}/price-history`)
+                .then(function(response) {
+                    priceHistoryData = response.data.price_history;
+                    createPriceHistoryChart();
+                    updatePriceAnalytics();
+                })
+                .catch(function(error) {
+                    document.getElementById('chartLoadingOverlay').innerHTML = `
+                        <div class="text-red-500 font-medium">Error loading price history: ${error.message || 'Unknown error'}</div>
+                    `;
+                    console.error('Error loading price history:', error);
+                });
+        }
+        
+        // Create the price history chart
+        function createPriceHistoryChart() {
+            // Destroy existing chart if it exists
+            if (priceHistoryChart) {
+                priceHistoryChart.destroy();
+            }
+            
+            // Get the time range selection
+            const timeRange = document.getElementById('timeRangeSelect').value;
+            const showAllCompetitors = document.getElementById('showAllCompetitors').checked;
+            
+            // Prepare chart data
+            const chartData = prepareChartData(timeRange, showAllCompetitors);
+            
+            // Create the chart
+            const ctx = document.getElementById('priceHistoryChart').getContext('2d');
+            priceHistoryChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    datasets: chartData.datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: chartData.timeUnit,
+                                displayFormats: {
+                                    day: 'dd/MM',
+                                    week: 'dd/MM',
+                                    month: 'MM/yyyy'
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: 'Date'
+                            }
+                        },
+                        y: {
+                            beginAtZero: false,
+                            title: {
+                                display: true,
+                                text: 'Price (VND)'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return value.toLocaleString('vi-VN');
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.y !== null) {
+                                        label += new Intl.NumberFormat('vi-VN').format(context.parsed.y) + ' VND';
+                                    }
+                                    return label;
+                                }
+                            }
+                        },
+                        legend: {
+                            display: false
+                        }
+                    },
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    }
+                }
+            });
+            
+            // Hide loading overlay
+            document.getElementById('chartLoadingOverlay').style.display = 'none';
+            
+            // Create custom legend
+            createCustomLegend(chartData.datasets);
+        }
+        
+        // Prepare chart data based on selected time range
+        function prepareChartData(timeRange, showAllCompetitors) {
+            const datasets = [];
+            const colors = [
+                { border: 'rgb(59, 130, 246)', background: 'rgba(59, 130, 246, 0.1)' }, // Blue
+                { border: 'rgb(16, 185, 129)', background: 'rgba(16, 185, 129, 0.1)' }, // Green
+                { border: 'rgb(239, 68, 68)', background: 'rgba(239, 68, 68, 0.1)' },   // Red
+                { border: 'rgb(124, 58, 237)', background: 'rgba(124, 58, 237, 0.1)' }, // Purple
+                { border: 'rgb(245, 158, 11)', background: 'rgba(245, 158, 11, 0.1)' }, // Orange
+                { border: 'rgb(236, 72, 153)', background: 'rgba(236, 72, 153, 0.1)' }  // Pink
+            ];
+            
+            let colorIndex = 0;
+            let timeUnit = 'day';
+            
+            // Set time unit based on range
+            if (timeRange === 'all' || timeRange === '365') {
+                timeUnit = 'month';
+            } else if (timeRange === '180' || timeRange === '90') {
+                timeUnit = 'week';
+            }
+            
+            // Convert days to milliseconds for filtering
+            const today = new Date();
+            const msPerDay = 24 * 60 * 60 * 1000;
+            const cutoffDate = timeRange === 'all' 
+                ? new Date(0) 
+                : new Date(today.getTime() - (parseInt(timeRange) * msPerDay));
+            
+            // Process each competitor's data
+            let competitorNames = Object.keys(priceHistoryData);
+            
+            // If not showing all, limit to top 5 competitors with most recent data
+            if (!showAllCompetitors && competitorNames.length > 5) {
+                competitorNames = competitorNames
+                    .map(name => {
+                        const logs = priceHistoryData[name];
+                        const latestDate = logs.length > 0 ? new Date(logs[0].timestamp) : new Date(0);
+                        return { name, latestDate };
+                    })
+                    .sort((a, b) => b.latestDate - a.latestDate)
+                    .slice(0, 5)
+                    .map(item => item.name);
+            }
+            
+            // Create datasets
+            competitorNames.forEach(competitor => {
+                const logs = priceHistoryData[competitor];
+                const color = colors[colorIndex % colors.length];
+                colorIndex++;
+                
+                // Filter by time range and prepare data points
+                const dataPoints = logs
+                    .filter(log => new Date(log.timestamp) >= cutoffDate)
+                    .map(log => {
+                        return {
+                            x: new Date(log.timestamp),
+                            y: log.price
+                        };
+                    })
+                    .reverse(); // Oldest to newest
+                
+                if (dataPoints.length > 0) {
+                    datasets.push({
+                        label: competitor,
+                        data: dataPoints,
+                        borderColor: color.border,
+                        backgroundColor: color.background,
+                        borderWidth: 2,
+                        pointRadius: 3,
+                        pointHoverRadius: 5,
+                        tension: 0.3,
+                        fill: false
+                    });
+                }
+            });
+            
+            return {
+                datasets,
+                timeUnit
+            };
+        }
+        
+        // Create custom legend elements
+        function createCustomLegend(datasets) {
+            const legendContainer = document.getElementById('chartLegend');
+            legendContainer.innerHTML = '';
+            
+            datasets.forEach((dataset, index) => {
+                const legendItem = document.createElement('div');
+                legendItem.className = 'flex items-center space-x-2 px-2 py-1 rounded border border-gray-200';
+                legendItem.innerHTML = `
+                    <span class="w-3 h-3 rounded-full" style="background-color: ${dataset.borderColor}"></span>
+                    <span class="text-sm">${dataset.label}</span>
+                `;
+                
+                // Add click handler to toggle visibility
+                legendItem.addEventListener('click', () => {
+                    const index = priceHistoryChart.data.datasets.findIndex(d => d.label === dataset.label);
+                    if (index > -1) {
+                        priceHistoryChart.data.datasets[index].hidden = !priceHistoryChart.data.datasets[index].hidden;
+                        priceHistoryChart.update();
+                        
+                        // Toggle visual state
+                        legendItem.classList.toggle('opacity-50');
+                    }
+                });
+                
+                legendContainer.appendChild(legendItem);
+            });
+            
+            // Add note if no datasets
+            if (datasets.length === 0) {
+                legendContainer.innerHTML = '<div class="text-sm text-gray-500">No price history data available</div>';
+            }
+        }
+        
+        // Update price history chart when controls change
+        function updatePriceHistoryChart() {
+            if (priceHistoryChart) {
+                createPriceHistoryChart(); // Re-create with new settings
+            }
+        }
+        
+        // Update price analytics section
+        function updatePriceAnalytics() {
+            // Calculate price delta (percentage change)
+            let priceDeltaHtml = 'Price change data not available';
+            let priceAverageHtml = 'Average price data not available';
+            let priceVolatilityHtml = 'Price volatility data not available';
+            
+            const competitorNames = Object.keys(priceHistoryData);
+            if (competitorNames.length > 0) {
+                const allPrices = [];
+                const priceChanges = [];
+                
+                // Calculate overall metrics across all competitors
+                competitorNames.forEach(competitor => {
+                    const logs = priceHistoryData[competitor];
+                    if (logs.length >= 2) {
+                        const newest = logs[0].price;
+                        const oldest = logs[logs.length - 1].price;
+                        
+                        // Only add valid prices
+                        if (newest && oldest) {
+                            const change = ((newest - oldest) / oldest) * 100;
+                            priceChanges.push(change);
+                        }
+                        
+                        // Add all prices for average calculation
+                        logs.forEach(log => {
+                            if (log.price) {
+                                allPrices.push(log.price);
+                            }
+                        });
+                    }
+                });
+                
+                // Calculate average price delta
+                if (priceChanges.length > 0) {
+                    const avgChange = priceChanges.reduce((sum, change) => sum + change, 0) / priceChanges.length;
+                    const formattedChange = avgChange.toFixed(2);
+                    const direction = avgChange > 0 ? 'increased' : avgChange < 0 ? 'decreased' : 'remained stable';
+                    priceDeltaHtml = `Average price has <span class="${avgChange > 0 ? 'text-red-500' : (avgChange < 0 ? 'text-green-500' : 'text-gray-500')}">${direction} by ${Math.abs(formattedChange)}%</span>`;
+                }
+                
+                // Calculate average price
+                if (allPrices.length > 0) {
+                    const avgPrice = allPrices.reduce((sum, price) => sum + price, 0) / allPrices.length;
+                    priceAverageHtml = `Average price across all competitors: <span class="font-medium">${new Intl.NumberFormat('vi-VN').format(Math.round(avgPrice))} VND</span>`;
+                }
+                
+                // Calculate price volatility (standard deviation)
+                if (allPrices.length > 1) {
+                    const mean = allPrices.reduce((sum, price) => sum + price, 0) / allPrices.length;
+                    const squaredDiffs = allPrices.map(price => Math.pow(price - mean, 2));
+                    const variance = squaredDiffs.reduce((sum, diff) => sum + diff, 0) / squaredDiffs.length;
+                    const stdDev = Math.sqrt(variance);
+                    const volatilityPct = (stdDev / mean) * 100;
+                    
+                    let volatilityLevel = 'low';
+                    if (volatilityPct > 15) {
+                        volatilityLevel = 'high';
+                    } else if (volatilityPct > 5) {
+                        volatilityLevel = 'moderate';
+                    }
+                    
+                    priceVolatilityHtml = `Price volatility is <span class="font-medium ${volatilityLevel === 'low' ? 'text-green-500' : (volatilityLevel === 'high' ? 'text-red-500' : 'text-yellow-500')}">${volatilityLevel}</span> (${volatilityPct.toFixed(1)}%)`;
+                }
+            }
+            
+            // Update the DOM
+            document.getElementById('priceDelta').innerHTML = priceDeltaHtml;
+            document.getElementById('priceAverage').innerHTML = priceAverageHtml;
+            document.getElementById('priceVolatility').innerHTML = priceVolatilityHtml;
+        }
+        
+        // Refresh price data for all competitors of a product
+        function refreshPriceData(productId) {
+            const button = event.target.closest('button');
+            const originalButtonText = button.innerHTML;
+            button.disabled = true;
+            button.innerHTML = '⏳ Đang cập nhật tất cả...';
+            
+            axios.post(`/api/crawl/all/${productId}`)
+                .then(function(response) {
+                    button.innerHTML = `✅ Đã cập nhật ${response.data.results?.length || 0} sản phẩm!`;
+                    setTimeout(() => {
+                        button.innerHTML = originalButtonText;
+                        button.disabled = false;
+                        
+                        // Reload price history with fresh data
+                        loadPriceHistory(productId);
+                    }, 2000);
+                })
+                .catch(function(error) {
+                    console.error('Error crawling all enemies:', error);
+                    button.innerHTML = '❌ Lỗi';
+                    setTimeout(() => {
+                        button.innerHTML = originalButtonText;
+                        button.disabled = false;
+                    }, 1500);
+                    alert(`Lỗi khi cập nhật giá: ${error.response?.data?.error || error.message || 'Unknown error'}`);
+                });
+        }
+        
+        // Close product detail modal
+        function closeProductDetailModal() {
+            document.getElementById('productDetailModal').classList.add('hidden');
+            document.getElementById('productDetailModal').classList.remove('flex');
+            document.body.style.overflow = 'auto';
+            currentProduct = null;
+        }
+        
+        // Render product details
+        function renderProductDetails(data) {
+            const product = data.product;
+            const competitors = data.competitors;
+            
+            document.getElementById('detailProductName').textContent = product.name;
+            
+            let html = `
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <h4 class="font-medium text-gray-700 mb-2">Product Details</h4>
+                        <table class="w-full text-sm">
+                            <tr>
+                                <td class="text-gray-500 py-1">SKU:</td>
+                                <td class="text-right font-medium">${product.sku || 'N/A'}</td>
+                            </tr>
+                            <tr>
+                                <td class="text-gray-500 py-1">Original Price:</td>
+                                <td class="text-right font-medium">${product.org_price || 'N/A'}</td>
+                            </tr>
+                            <tr>
+                                <td class="text-gray-500 py-1">Current Price:</td>
+                                <td class="text-right font-medium text-green-600">${product.cur_price || 'N/A'}</td>
+                            </tr>
+                            <tr>
+                                <td class="text-gray-500 py-1">Created:</td>
+                                <td class="text-right">${product.created_at}</td>
+                            </tr>
+                            <tr>
+                                <td class="text-gray-500 py-1">Last Updated:</td>
+                                <td class="text-right">${product.updated_at}</td>
+                            </tr>
+                        </table>
+                        ${product.link ? `<a href="${product.link}" target="_blank" class="block mt-3 text-blue-600 hover:underline text-center">View Product Link</a>` : ''}
+                    </div>
+                    
+                    <div class="bg-gray-50 p-4 rounded-lg md:col-span-2">
+                        <h4 class="font-medium text-gray-700 mb-2">Price Comparison</h4>
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm text-gray-500">Competitor Count: ${data.total_competitors}</span>
+                            <span class="text-sm">
+                                <span class="text-gray-500">Price Range:</span>
+                                <span class="font-medium">${data.lowest_price || 'N/A'} - ${data.highest_price || 'N/A'}</span>
+                            </span>
+                        </div>
+                        
+                        <div class="mt-3 overflow-hidden rounded-lg border border-gray-200">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-100">
+                                    <tr>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Competitor</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Updated</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200">
+                                    ${competitors.length > 0 ? 
+                                        competitors.map(comp => `
+                                            <tr class="hover:bg-gray-50">
+                                                <td class="px-4 py-2 text-sm">
+                                                    <div class="font-medium text-gray-900">${comp.competitor_name}</div>
+                                                    <div class="text-gray-500 text-xs truncate">${comp.product_name || 'N/A'}</div>
+                                                </td>
+                                                <td class="px-4 py-2 text-sm font-medium ${comp.competitor_price ? 'text-green-600' : 'text-gray-500'}">${comp.competitor_price || 'N/A'}</td>
+                                                <td class="px-4 py-2 text-sm text-gray-500">${comp.last_updated}</td>
+                                            </tr>
+                                        `).join('') : 
+                                        '<tr><td colspan="3" class="px-4 py-2 text-sm text-center text-gray-500">No competitor data available</td></tr>'
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-gray-50 p-4 rounded-lg mb-4">
+                    <h4 class="font-medium text-gray-700 mb-3">Price History</h4>
+                    <div id="priceHistoryControls" class="flex items-center justify-between mb-3">
+                        <div>
+                            <select id="timeRangeSelect" class="bg-white border border-gray-300 rounded-md px-2 py-1 text-sm">
+                                <option value="7">Last 7 days</option>
+                                <option value="30" selected>Last 30 days</option>
+                                <option value="90">Last 3 months</option>
+                                <option value="180">Last 6 months</option>
+                                <option value="365">Last year</option>
+                                <option value="all">All time</option>
+                            </select>
+                        </div>
+                        <div class="text-sm">
+                            <label class="inline-flex items-center">
+                                <input type="checkbox" id="showAllCompetitors" class="form-checkbox h-4 w-4 text-blue-600" checked>
+                                <span class="ml-2 text-gray-700">Show all competitors</span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="chart-container">
+                        <div id="chartLoadingOverlay" class="loading-overlay">
+                            <div class="text-gray-500 font-medium">Loading chart data...</div>
+                        </div>
+                        <canvas id="priceHistoryChart"></canvas>
+                    </div>
+                    
+                    <div id="chartLegend" class="mt-4 flex flex-wrap gap-3">
+                        <!-- Dynamic legend items will be added here -->
+                    </div>
+                </div>
+                
+                <div class="mt-6 flex flex-col md:flex-row md:justify-between">
+                    <div>
+                        <h4 class="font-medium text-gray-700 mb-2">Price Analysis</h4>
+                        <ul class="text-sm space-y-1">
+                            <li class="flex items-center">
+                                <span class="w-4 h-4 mr-2 rounded-full bg-green-100 flex items-center justify-center">
+                                    <span class="w-2 h-2 rounded-full bg-green-500"></span>
+                                </span>
+                                <span id="priceDelta"></span>
+                            </li>
+                            <li class="flex items-center">
+                                <span class="w-4 h-4 mr-2 rounded-full bg-blue-100 flex items-center justify-center">
+                                    <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+                                </span>
+                                <span id="priceAverage"></span>
+                            </li>
+                            <li class="flex items-center">
+                                <span class="w-4 h-4 mr-2 rounded-full bg-purple-100 flex items-center justify-center">
+                                    <span class="w-2 h-2 rounded-full bg-purple-500"></span>
+                                </span>
+                                <span id="priceVolatility"></span>
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    <div class="mt-4 md:mt-0 text-right">
+                        <button onclick="refreshPriceData(currentProductId)" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 flex items-center md:inline-flex ml-auto md:ml-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                            Update All Prices
+                        </button>
+                    </div>
+                </div>
+                    ${data.price_history.length > 0 ? `
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-100">
+                                    <tr>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Competitor</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product Name</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200">
+                                    ${data.price_history.map(hist => `
+                                        <tr class="hover:bg-gray-50">
+                                            <td class="px-4 py-2 text-sm text-gray-500">${hist.timestamp}</td>
+                                            <td class="px-4 py-2 text-sm">${hist.competitor_name}</td>
+                                            <td class="px-4 py-2 text-sm">${hist.product_name || 'N/A'}</td>
+                                            <td class="px-4 py-2 text-sm font-medium ${hist.price ? 'text-green-600' : 'text-gray-500'}">${hist.price || 'N/A'}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    ` : '<div class="text-center py-4 text-gray-500">No price history available</div>'}
+                </div>
+            `;
+            
+            document.getElementById('productDetailContent').innerHTML = html;
+        }
+    </script>
+</body>
+</html>

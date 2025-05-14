@@ -1,7 +1,7 @@
 CREATE TABLE products (
 id INT AUTO_INCREMENT PRIMARY KEY,
 name VARCHAR(255) NOT NULL,
-sku VARCHAR(100) UNIQUE,
+sku VARCHAR(100) ,
 link TEXT,
 org_price DECIMAL(12,2),
 cur_price DECIMAL(12,2),
