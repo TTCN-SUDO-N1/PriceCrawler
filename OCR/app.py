@@ -3,10 +3,10 @@ import mysql.connector
 import os
 from urllib.parse import urlparse
 from datetime import datetime
-import SaveToMSQL as db  # Import your existing database module
-import screenshot  # Import your screenshot module # Import your text extraction module
-import error_handler as err  # Import the new error handler
-from db_reconnect import with_db_reconnect  # Import our reconnection decorator
+import SaveToMSQL as db 
+import screenshot  
+import error_handler as err  
+from db_reconnect import with_db_reconnect  
 
 app = Flask(__name__)
 
@@ -984,8 +984,7 @@ def get_dashboard_stats():
 def refresh_data():
     """Refresh all data (placeholder for any data refresh operations)"""
     try:
-        # This would typically involve refreshing cached data or similar
-        # For now, just return success
+        
         return jsonify({"message": "Data refreshed successfully"})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
