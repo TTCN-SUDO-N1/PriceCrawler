@@ -1,4 +1,4 @@
-from NewApp.extensions import db
+from NewApp import db
 import datetime
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import DeclarativeMeta
@@ -14,8 +14,8 @@ class Product(db.Model):
     link = db.Column(db.Text)
     org_price = db.Column(db.Numeric(12, 2))
     cur_price = db.Column(db.Numeric(12, 2))
-    created_at = db.Column(db.DateTime, default=datetime.timezone.utc)
-    updated_at = db.Column(db.DateTime, default=datetime.timezone.utc, onupdate=datetime.timezone.utc)
+    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
     
     # Relationships
     product_crawls = relationship("ProductCrawl", back_populates="product", cascade="all, delete-orphan")
@@ -48,8 +48,8 @@ class Enemy(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     name = db.Column(db.String(255), nullable=False)
     domain = db.Column(db.String(255), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.timezone.utc)
-    updated_at = db.Column(db.DateTime, default=datetime.timezone.utc, onupdate=datetime.timezone.utc)
+    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
     
     # Relationships
     product_crawls = relationship("ProductCrawl", back_populates="enemy", cascade="all, delete-orphan")
@@ -78,8 +78,8 @@ class ProductCrawl(db.Model):
     prod_id = db.Column(db.Integer, db.ForeignKey('products.id', ondelete='CASCADE'), nullable=False)
     enemy_id = db.Column(db.Integer, db.ForeignKey('enemies.id', ondelete='CASCADE'), nullable=False)
     link = db.Column(db.Text, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.timezone.utc)
-    updated_at = db.Column(db.DateTime, default=datetime.timezone.utc, onupdate=datetime.timezone.utc)
+    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
     
     # Relationships
     product = relationship("Product", back_populates="product_crawls")
@@ -123,7 +123,7 @@ class ProductCrawlLog(db.Model):
     product_crawl_id = db.Column(db.Integer, db.ForeignKey('product_crawls.id', ondelete='CASCADE'), nullable=False)
     name = db.Column(db.String(255), nullable=False)
     price = db.Column(db.Numeric(12, 2))
-    timestamp = db.Column(db.DateTime, default=datetime.timezone.utc)
+    timestamp = db.Column(db.DateTime, default=datetime.datetime.utcnow)
     other_data = db.Column(db.JSON)
     
     # Relationships
@@ -149,4 +149,4 @@ class ProductCrawlLog(db.Model):
                 'link': self.product_crawl.link
             }
         
-        return result 
+        return result

@@ -26,13 +26,14 @@ product_output_model = api.model('ProductOutput', {
 
 @api.route('/')
 class ProductList(Resource):
-    @api.doc('list_products')
+    @api.doc('list_products', description='Get a list of all products')
     @api.marshal_list_with(product_output_model)
     def get(self):
         return Product.query.all(), 200
 
     @api.expect(product_input_model)
     @api.marshal_with(product_output_model, code=201)
+    @api.doc('create_product', description='Create a new product')
     def post(self):
         data = request.json
         new_product = Product(
@@ -50,7 +51,7 @@ class ProductList(Resource):
 @api.param('product_id', 'Product unique identifier')
 @api.response(404, 'Product not found')
 class ProductResource(Resource):
-    @api.doc('get_product')
+    @api.doc('get_product', description='Get a product by its ID')
     @api.marshal_with(product_output_model)
     def get(self, product_id):
         product = Product.query.get_or_404(product_id)
@@ -58,6 +59,7 @@ class ProductResource(Resource):
 
     @api.expect(product_input_model)
     @api.marshal_with(product_output_model)
+    @api.doc('update_product', description='Update a product by its ID')
     def put(self, product_id):
         data = request.json
         product = Product.query.get_or_404(product_id)
@@ -69,6 +71,7 @@ class ProductResource(Resource):
         db.session.commit()
         return product, 200
 
+    @api.doc('delete_product', description='Delete a product by its ID')
     def delete(self, product_id):
         product = Product.query.get_or_404(product_id)
         db.session.delete(product)

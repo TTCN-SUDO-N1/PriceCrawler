@@ -23,13 +23,14 @@ product_crawl_log_output_model = api.model('ProductCrawlLogOutput', {
 
 @api.route('/')
 class ProductCrawlLogList(Resource):
-    @api.doc('list_product_crawl_logs')
+    @api.doc('list_product_crawl_logs', description='Get a list of all product crawl logs')
     @api.marshal_list_with(product_crawl_log_output_model)
     def get(self):
         return ProductCrawlLog.query.all(), 200
 
     @api.expect(product_crawl_log_input_model)
     @api.marshal_with(product_crawl_log_output_model, code=201)
+    @api.doc('create_product_crawl_log', description='Create a new product crawl log')
     def post(self):
         data = request.json
         new_log = ProductCrawlLog(
@@ -46,7 +47,7 @@ class ProductCrawlLogList(Resource):
 @api.param('log_id', 'Log unique identifier')
 @api.response(404, 'Log not found')
 class ProductCrawlLogResource(Resource):
-    @api.doc('get_product_crawl_log')
+    @api.doc('get_product_crawl_log', description='Get a product crawl log by its ID')
     @api.marshal_with(product_crawl_log_output_model)
     def get(self, log_id):
         log = ProductCrawlLog.query.get_or_404(log_id)
@@ -54,6 +55,7 @@ class ProductCrawlLogResource(Resource):
 
     @api.expect(product_crawl_log_input_model)
     @api.marshal_with(product_crawl_log_output_model)
+    @api.doc('update_product_crawl_log', description='Update a product crawl log by its ID')
     def put(self, log_id):
         data = request.json
         log = ProductCrawlLog.query.get_or_404(log_id)
@@ -64,6 +66,7 @@ class ProductCrawlLogResource(Resource):
         db.session.commit()
         return log, 200
 
+    @api.doc('delete_product_crawl_log', description='Delete a product crawl log by its ID')
     def delete(self, log_id):
         log = ProductCrawlLog.query.get_or_404(log_id)
         db.session.delete(log)
