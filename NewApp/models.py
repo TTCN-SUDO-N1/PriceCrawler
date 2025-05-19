@@ -1,4 +1,4 @@
-from NewApp import db
+from NewApp.extensions import db
 import datetime
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import DeclarativeMeta
