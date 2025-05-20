@@ -63,3 +63,51 @@ class EnemyResource(Resource):
         db.session.delete(enemy)
         db.session.commit()
         return '', 204
+
+@api.route('/by-domain')
+class EnemyByDomainResource(Resource):
+    @api.doc('find_enemy_by_domain', description='Find enemy by domain')
+    @api.param('domain', 'Domain to search for')
+    @api.param('auto_create', 'Automatically create a new enemy if not found', _in='query', type='boolean')
+    @api.marshal_with(enemy_output_model)
+    def get(self):
+        domain = request.args.get('domain')
+        auto_create = request.args.get('auto_create', 'false').lower() == 'true'
+        
+        if not domain:
+            api.abort(400, 'Domain parameter is required')
+            
+        # Remove www. if present
+        normalized_domain = domain.replace('www.', '')
+        
+        # Try to find an exact match first
+        enemy = Enemy.query.filter(Enemy.domain == normalized_domain).first()
+        
+        # If no exact match, try to find a partial match
+        if not enemy:
+            enemies = Enemy.query.all()
+            for e in enemies:
+                e_domain = e.domain.replace('www.', '')
+                if e_domain in normalized_domain or normalized_domain in e_domain:
+                    enemy = e
+                    break
+        
+        # If still no match and auto_create is True, create a new enemy
+        if not enemy and auto_create:
+            # Generate a name from the domain
+            enemy_name = normalized_domain.split('.')[0]
+            # Capitalize the first letter
+            enemy_name = enemy_name.capitalize()
+            
+            new_enemy = Enemy(
+                name=enemy_name,
+                domain=normalized_domain
+            )
+            db.session.add(new_enemy)
+            db.session.commit()
+            return new_enemy, 201
+            
+        if enemy:
+            return enemy, 200
+        else:
+            api.abort(404, 'No enemy found for this domain')

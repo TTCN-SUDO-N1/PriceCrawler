@@ -79,11 +79,9 @@ def scrape(url):
         domain = url.split("//")[-1].split("/")[0]
         timestamp = str(int(time.time()))
         driver.save_screenshot(domain+"_"+timestamp+".png")
-        print(f"Screenshot saved as {domain+"_"+timestamp}.png")
         image = cv.imread(domain+"_"+timestamp+".png")
         gray = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
         cv.imwrite(domain+"_"+timestamp+".png", gray)
-        print(f"Screenshot saved as {domain+"_"+timestamp}.png")
         responseJson= ExtractTxt.Extract(domain+"_"+timestamp+".png")
         os.remove(domain+"_"+timestamp+".png")
         

@@ -156,23 +156,18 @@
                                 <button onclick="event.stopPropagation(); deleteProduct(${product.id})" class="bg-red-500 text-white px-2 py-1 rounded">🗑️</button>
                                 <button onclick="event.stopPropagation(); crawlProduct(${product.id})" class="bg-blue-600 text-white px-2 py-1 rounded">🔄 Crawl</button>
                             </td>
-                        </tr>
-                        <tr class="enemy-container hidden" id="enemyContainer-${product.id}">
-                            <td colspan="6" class="p-0">
-                                <div class="bg-gray-50 p-4 border-l-4 border-blue-400">
-                                    <div id="enemyContent-${product.id}" class="relative">
-                                        <div class="text-center py-5">
-                                            <span class="text-gray-500">Nhấp để tải thông tin đối thủ</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </td>
                         </tr>`;
                     });
                     html += '</tbody></table>';
                     container.innerHTML = html;
+                    
+                    // Clear any previously displayed enemy info
                     document.getElementById('enemiesContainer').innerHTML = '';
                     document.getElementById('logsContainer').innerHTML = '';
+                    
+                    // Reset selection state
+                    selectedProductId = null;
+                    selectedEnemyId = null;
                 })
                 .catch(function (error) {
                     document.getElementById('productsContainer').innerHTML = '<div class="text-center py-10 text-red-500">Lỗi khi tải sản phẩm. Vui lòng thử lại.</div>';
@@ -180,47 +175,62 @@
         }
 
         function selectProduct(productId, row) {
+            // Check if this row is already selected
+            const isAlreadySelected = selectedProductId === productId;
+            
+            // If clicking on the already selected product, just close it
+            if (isAlreadySelected) {
+                // Remove active styling from the row
+                if (row) {
+                    row.classList.remove('bg-blue-100');
+                    row.classList.add('hover:bg-blue-50');
+                }
+                
+                // Clear selection and enemy display
+                selectedProductId = null;
+                selectedEnemyId = null;
+                document.getElementById('enemiesContainer').innerHTML = '';
+                document.getElementById('logsContainer').innerHTML = '';
+                return;
+            }
+            
             // Remove active styling from all rows
             document.querySelectorAll('.product-row').forEach(r => {
                 r.classList.remove('bg-blue-100');
                 r.classList.add('hover:bg-blue-50');
             });
             
-            // Hide all enemy containers first
-            const allEnemyContainers = document.querySelectorAll('.enemy-container');
-            allEnemyContainers.forEach(container => {
-                container.classList.add('hidden');
-            });
+            // Set this product as selected
+            selectedProductId = productId;
+            // Clear any previously selected enemy
+            selectedEnemyId = null;
             
-            // Toggle the selected product's enemy container
-            const enemyContainer = document.getElementById(`enemyContainer-${productId}`);
-            enemyContainer.classList.toggle('hidden');
-            
-            // If we're showing this container, load the enemies
-            if (!enemyContainer.classList.contains('hidden')) {
-                selectedProductId = productId;
-                
-                // Add active styling to the clicked row
-                if (row) {
-                    row.classList.add('bg-blue-100');
-                    row.classList.remove('hover:bg-blue-50');
-                }
-                
-                loadEnemies(productId);
-                document.getElementById('logsContainer').innerHTML = '';
-            } else {
-                selectedProductId = null;
+            // Add active styling to the clicked row
+            if (row) {
+                row.classList.add('bg-blue-100');
+                row.classList.remove('hover:bg-blue-50');
             }
+            
+            // Load enemies for this product only
+            loadEnemies(productId);
+            document.getElementById('logsContainer').innerHTML = '';
         }
 
         function loadEnemies(productId) {
-            const enemyContent = document.getElementById(`enemyContent-${productId}`);
-            enemyContent.innerHTML = '<div class="text-center py-5"><span class="text-gray-500">⏳ Đang tải dữ liệu đối thủ...</span></div>';
+            const enemiesContainer = document.getElementById('enemiesContainer');
+            enemiesContainer.innerHTML = '<div class="text-center py-5"><span class="text-gray-500">⏳ Đang tải dữ liệu đối thủ...</span></div>';
             
             axios.get(`/api/product-crawls?prod_id=${productId}`)
                 .then(function (response) {
                     const crawls = response.data;
-                    let html = `<div class='mb-2 flex justify-between items-center'><h3 class='font-bold text-lg'>Sản phẩm đối thủ</h3><button onclick="openEnemyModal(${productId});event.stopPropagation();" class="bg-green-600 text-white px-3 py-1 rounded">➕ Thêm đối thủ</button></div>`;
+                    let html = `<div class="bg-gray-50 p-4 border-l-4 border-blue-400 rounded">
+                        <div class='mb-2 flex justify-between items-center'>
+                            <h3 class='font-bold text-lg'>Sản phẩm đối thủ</h3>
+                            <div class="flex space-x-2">
+                                <button onclick="crawlAllEnemies(${productId});event.stopPropagation();" class="bg-blue-600 text-white px-3 py-1 rounded" id="crawlAllButton">🔄 Crawl All</button>
+                                <button onclick="openEnemyModal(${productId});event.stopPropagation();" class="bg-green-600 text-white px-3 py-1 rounded">➕ Thêm đối thủ</button>
+                            </div>
+                        </div>`;
                     
                     if (crawls.length === 0) {
                         html += '<div class="text-gray-500 py-3">Chưa có sản phẩm đối thủ nào. Hãy thêm mới!</div>';
@@ -235,7 +245,7 @@
                         </thead>
                         <tbody>`;
                         crawls.forEach(crawl => {
-                            html += `<tr class="cursor-pointer hover:bg-blue-50" onclick="selectEnemy(${crawl.id})">
+                            html += `<tr class="cursor-pointer hover:bg-blue-50 enemy-row" data-enemy-id="${crawl.id}" onclick="selectEnemy(${crawl.id}, this)">
                                 <td><a href="${crawl.link}" target="_blank" class="text-blue-600 hover:underline" onclick="event.stopPropagation()">${crawl.link}</a></td>
                                 <td>${crawl.enemy ? crawl.enemy.name + ' (' + crawl.enemy.domain + ')' : ''}</td>
                                 <td class="text-center space-x-1">
@@ -248,74 +258,70 @@
                         html += '</tbody></table>';
                     }
                     
-                    enemyContent.innerHTML = html;
+                    html += '</div>';
+                    enemiesContainer.innerHTML = html;
                 })
                 .catch(function (error) {
-                    enemyContent.innerHTML = '<div class="text-center py-5 text-red-500">Lỗi khi tải sản phẩm đối thủ.</div>';
+                    enemiesContainer.innerHTML = '<div class="text-center py-5 text-red-500">Lỗi khi tải sản phẩm đối thủ.</div>';
                 });
         }
 
-        function selectEnemy(enemyCrawlId) {
+        function selectEnemy(enemyCrawlId, row) {
+            // Check if this enemy is already selected
+            const isAlreadySelected = selectedEnemyId === enemyCrawlId;
+            
+            // Find all enemy rows in the current view
+            const enemyRows = document.querySelectorAll('.enemy-row');
+            
+            // Reset styling on all enemy rows
+            enemyRows.forEach(r => {
+                r.classList.remove('bg-blue-100');
+                r.classList.add('hover:bg-blue-50');
+            });
+            
+            // Check if logs container already exists
+            const logsContainer = document.getElementById('logsContainer');
+            
+            // If already selected, hide logs and deselect
+            if (isAlreadySelected) {
+                logsContainer.innerHTML = '';
+                selectedEnemyId = null;
+                return;
+            }
+            
+            // Set as selected
             selectedEnemyId = enemyCrawlId;
             
-            // Find the product this enemy belongs to
-            if (selectedProductId) {
-                const enemyContent = document.getElementById(`enemyContent-${selectedProductId}`);
-                
-                // Check if logs container exists, create it if not
-                let logsContainer = document.getElementById(`logs-${enemyCrawlId}`);
-                
-                if (!logsContainer) {
-                    const enemyRows = enemyContent.querySelectorAll('tr');
-                    
-                    // Find the row of this enemy and insert logs container after it
-                    for (let i = 0; i < enemyRows.length; i++) {
-                        const row = enemyRows[i];
-                        if (row.onclick && row.onclick.toString().includes(enemyCrawlId)) {
-                            // First close all other open log sections
-                            const allLogContainers = enemyContent.querySelectorAll('.log-container');
-                            allLogContainers.forEach(container => {
-                                container.remove();
-                            });
-                            
-                            // Insert logs container after this row
-                            const logRow = document.createElement('tr');
-                            logRow.className = 'log-container';
-                            logRow.innerHTML = `<td colspan="3" class="p-0">
-                                <div class="bg-blue-50 p-3 border-l-4 border-blue-300">
-                                    <div id="logs-${enemyCrawlId}" class="py-2">
-                                        <div class="text-center">⏳ Đang tải lịch sử crawl...</div>
-                                    </div>
-                                </div>
-                            </td>`;
-                            
-                            // Insert after enemy row
-                            row.parentNode.insertBefore(logRow, row.nextSibling);
-                            logsContainer = document.getElementById(`logs-${enemyCrawlId}`);
-                            break;
-                        }
+            // Add styling to the selected row
+            if (row) {
+                row.classList.add('bg-blue-100');
+                row.classList.remove('hover:bg-blue-50');
+            } else {
+                // Find the row if we don't have it
+                enemyRows.forEach(r => {
+                    if (r.getAttribute('data-enemy-id') == enemyCrawlId) {
+                        r.classList.add('bg-blue-100');
+                        r.classList.remove('hover:bg-blue-50');
                     }
-                }
-                
-                // Now load the logs
-                if (logsContainer) {
-                    loadLogs(enemyCrawlId, logsContainer);
-                }
+                });
             }
+            
+            // Show loading state in logs container
+            logsContainer.innerHTML = '<div class="bg-blue-50 p-4 border-l-4 border-blue-300 rounded"><div class="text-center py-2">⏳ Đang tải lịch sử crawl...</div></div>';
+            
+            // Load the logs
+            loadLogs(enemyCrawlId);
         }
 
-        function loadLogs(enemyCrawlId, container = null) {
-            const logsContainer = container || document.getElementById(`logs-${enemyCrawlId}`);
-            
-            if (!logsContainer) {
-                // If we don't have a container, use the original logs container
-                document.getElementById('logsContainer').innerHTML = '<div class="text-center py-5"><span class="text-gray-500">⏳ Đang tải lịch sử crawl...</span></div>';
-            }
+        function loadLogs(enemyCrawlId) {
+            const logsContainer = document.getElementById('logsContainer');
+            logsContainer.innerHTML = '<div class="text-center py-5"><span class="text-gray-500">⏳ Đang tải lịch sử crawl...</span></div>';
             
             axios.get(`/api/product-crawl-logs?product_crawl_id=${enemyCrawlId}`)
                 .then(function (response) {
                     const logs = response.data;
-                    let html = `<div class='mb-2 font-bold text-lg'>Lịch sử crawl</div>`;
+                    let html = `<div class="bg-blue-50 p-4 border-l-4 border-blue-300 rounded">
+                        <div class='mb-2 font-bold text-lg'>Lịch sử crawl</div>`;
                     if (!logs.length) {
                         html += '<div class="text-gray-500">Chưa có lịch sử crawl.</div>';
                     } else {
@@ -325,21 +331,13 @@
                         });
                         html += '</ul>';
                     }
+                    html += '</div>';
                     
-                    if (logsContainer) {
-                        logsContainer.innerHTML = html;
-                    } else {
-                        document.getElementById('logsContainer').innerHTML = html;
-                    }
+                    logsContainer.innerHTML = html;
                 })
                 .catch(function (error) {
-                    const errorHtml = '<div class="text-center py-3 text-red-500">Lỗi khi tải lịch sử crawl.</div>';
-                    
-                    if (logsContainer) {
-                        logsContainer.innerHTML = errorHtml;
-                    } else {
-                        document.getElementById('logsContainer').innerHTML = errorHtml;
-                    }
+                    const errorHtml = '<div class="bg-blue-50 p-4 border-l-4 border-red-300 rounded"><div class="text-center py-3 text-red-500">Lỗi khi tải lịch sử crawl.</div></div>';
+                    logsContainer.innerHTML = errorHtml;
                 });
         }
 
@@ -395,13 +393,13 @@
                 return;
             }
             
-            // If enemy not selected, detect from link domain
+            // If enemy not selected, detect from link domain and create if needed
             if (!enemy_id) {
                 detectEnemyFromLink(link, (detectedEnemyId) => {
                     if (detectedEnemyId) {
                         saveEnemyLink(productId, enemyId, link, detectedEnemyId);
                     } else {
-                        alert('Không tìm thấy đối thủ phù hợp với domain này. Vui lòng chọn một đối thủ.');
+                        alert('Không thể xác định đối thủ từ domain. Vui lòng thử lại hoặc chọn đối thủ thủ công.');
                     }
                 });
             } else {
@@ -421,36 +419,53 @@
                 const url = new URL(link);
                 const domain = url.hostname;
                 
-                // Search for enemy with matching domain
-                axios.get('/api/enemies/')
+                // Use the API to search for enemy by domain with auto_create=true
+                axios.get(`/api/enemies/by-domain?domain=${encodeURIComponent(domain)}&auto_create=true`)
                     .then(response => {
-                        const enemies = response.data;
-                        // Find an enemy with a matching domain
-                        const matchedEnemy = enemies.find(enemy => {
-                            // Remove www. and check if domain contains or equals enemy.domain
-                            const normalizedDomain = domain.replace(/^www\./, '');
-                            const normalizedEnemyDomain = enemy.domain.replace(/^www\./, '');
-                            return normalizedDomain.includes(normalizedEnemyDomain) || 
-                                   normalizedEnemyDomain.includes(normalizedDomain);
-                        });
+                        // We found or created an enemy via the API
+                        const enemy = response.data;
+                        const isNewEnemy = response.status === 201;
                         
-                        // Update the dropdown selection if found
-                        if (matchedEnemy) {
-                            document.getElementById('enemySelect').value = matchedEnemy.id;
-                            document.getElementById('autoDetectStatus').innerHTML = `<span class="text-green-600">✓ Đã phát hiện: ${matchedEnemy.name}</span>`;
-                            callback(matchedEnemy.id);
-                        } else {
-                            document.getElementById('autoDetectStatus').innerHTML = `<span class="text-red-600">✗ Không tìm thấy đối thủ phù hợp</span>`;
-                            callback(null);
+                        // Update the dropdown selection
+                        const select = document.getElementById('enemySelect');
+                        
+                        // Check if we need to add this enemy to the dropdown (if it's new)
+                        let needToAdd = true;
+                        const options = select.querySelectorAll('option');
+                        for (let i = 0; i < options.length; i++) {
+                            if (options[i].value == enemy.id) {
+                                needToAdd = false;
+                                break;
+                            }
                         }
                         
-                        // Restore button state
+                        if (needToAdd) {
+                            select.innerHTML += `<option value="${enemy.id}">${enemy.name} (${enemy.domain})</option>`;
+                        }
+                        
+                        // Set the selected value
+                        select.value = enemy.id;
+                        
+                        // Update status message
+                        if (isNewEnemy) {
+                            document.getElementById('autoDetectStatus').innerHTML = 
+                                `<span class="text-green-600">✓ Tự động tạo đối thủ mới: ${enemy.name}</span>`;
+                        } else {
+                            document.getElementById('autoDetectStatus').innerHTML = 
+                                `<span class="text-green-600">✓ Đã phát hiện: ${enemy.name}</span>`;
+                        }
+                        
+                        // Return the enemy ID to the callback
+                        callback(enemy.id);
+                        
+                        // Reset button state
                         saveBtn.innerText = originalBtnText;
                         saveBtn.disabled = false;
                     })
                     .catch(error => {
-                        console.error('Error fetching enemies:', error);
-                        document.getElementById('autoDetectStatus').innerHTML = `<span class="text-red-600">✗ Lỗi khi tìm kiếm đối thủ</span>`;
+                        console.error('Error detecting/creating enemy:', error);
+                        document.getElementById('autoDetectStatus').innerHTML = 
+                            `<span class="text-red-600">✗ Lỗi: ${error.response?.data?.message || 'Không thể xác định đối thủ'}</span>`;
                         callback(null);
                         saveBtn.innerText = originalBtnText;
                         saveBtn.disabled = false;
@@ -634,7 +649,10 @@
 
         function refreshData() {
             loadProducts();
+            document.getElementById('enemiesContainer').innerHTML = '';
             document.getElementById('logsContainer').innerHTML = '';
+            selectedProductId = null;
+            selectedEnemyId = null;
         }
 
         // Implement product and enemy crawling functions
@@ -692,30 +710,87 @@
                 });
         }
 
-        function crawlEnemy(enemyCrawlId) {
-            // First, we need to find which product this enemy belongs to
-            let productId = selectedProductId;
-            let crawlBtn = null;
+        function crawlAllEnemies(productId) {
+            const crawlAllBtn = document.getElementById('crawlAllButton');
+            const originalText = crawlAllBtn.innerHTML;
+            crawlAllBtn.innerHTML = '⏳ Đang crawl tất cả...';
+            crawlAllBtn.disabled = true;
             
-            // Find the enemy's row and crawl button in its product container
-            if (productId) {
-                const enemyContent = document.getElementById(`enemyContent-${productId}`);
-                if (enemyContent) {
-                    const enemyRows = enemyContent.querySelectorAll('tr');
+            // Get all enemies for this product
+            axios.get(`/api/product-crawls?prod_id=${productId}`)
+                .then(function(response) {
+                    const crawls = response.data;
+                    if (crawls.length === 0) {
+                        crawlAllBtn.innerHTML = '⚠️ Không có đối thủ';
+                        setTimeout(() => {
+                            crawlAllBtn.innerHTML = originalText;
+                            crawlAllBtn.disabled = false;
+                        }, 2000);
+                        return;
+                    }
                     
-                    // Find the row corresponding to this enemy and get its crawl button
-                    for (let i = 0; i < enemyRows.length; i++) {
-                        const row = enemyRows[i];
-                        if (row.onclick && row.onclick.toString().includes(enemyCrawlId)) {
-                            const cells = row.querySelectorAll('td');
-                            if (cells.length > 0) {
-                                const actionBtns = cells[cells.length - 1].querySelectorAll('button');
-                                if (actionBtns.length >= 3) {
-                                    crawlBtn = actionBtns[2];
-                                    break;
-                                }
+                    let completedCrawls = 0;
+                    let failedCrawls = 0;
+                    
+                    // Function to update button text with progress
+                    const updateProgress = () => {
+                        crawlAllBtn.innerHTML = `⏳ ${completedCrawls}/${crawls.length}`;
+                        if (completedCrawls + failedCrawls === crawls.length) {
+                            if (failedCrawls > 0) {
+                                crawlAllBtn.innerHTML = `✓ ${completedCrawls}/${crawls.length} (${failedCrawls} lỗi)`;
+                            } else {
+                                crawlAllBtn.innerHTML = `✓ Hoàn tất ${crawls.length}/${crawls.length}`;
+                            }
+                            setTimeout(() => {
+                                crawlAllBtn.innerHTML = originalText;
+                                crawlAllBtn.disabled = false;
+                            }, 2000);
+                            
+                            // Reload enemies to refresh data
+                            loadEnemies(productId);
+                            
+                            // Reload logs if an enemy is selected
+                            if (selectedEnemyId) {
+                                loadLogs(selectedEnemyId);
                             }
                         }
+                    }
+                    
+                    // Crawl each enemy product
+                    crawls.forEach(crawl => {
+                        axios.post(`/api/product-crawls/crawl-link`, { crawl_id: crawl.id })
+                            .then(function() {
+                                completedCrawls++;
+                                updateProgress();
+                            })
+                            .catch(function() {
+                                failedCrawls++;
+                                updateProgress();
+                            });
+                    });
+                })
+                .catch(function(error) {
+                    console.error('Error fetching enemies for crawling:', error);
+                    crawlAllBtn.innerHTML = '✗ Lỗi';
+                    setTimeout(() => {
+                        crawlAllBtn.innerHTML = originalText;
+                        crawlAllBtn.disabled = false;
+                    }, 2000);
+                });
+        }
+
+        function crawlEnemy(enemyCrawlId) {
+            // Find the enemy row by its data-enemy-id attribute
+            const enemyRow = document.querySelector(`.enemy-row[data-enemy-id="${enemyCrawlId}"]`);
+            let crawlBtn = null;
+            
+            // Find the crawl button in the enemy row
+            if (enemyRow) {
+                const cells = enemyRow.querySelectorAll('td');
+                if (cells.length > 0) {
+                    const actionBtns = cells[cells.length - 1].querySelectorAll('button');
+                    if (actionBtns.length >= 3) {
+                        crawlBtn = actionBtns[2]; // The third button should be the crawl button
                     }
                 }
             }

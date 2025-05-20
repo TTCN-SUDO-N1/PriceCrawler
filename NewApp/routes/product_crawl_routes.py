@@ -36,8 +36,12 @@ product_crawl_output_model = api.model('ProductCrawlOutput', {
 @api.route('/')
 class ProductCrawlList(Resource):
     @api.doc('list_product_crawls', description='Get a list of all product crawls')
+    @api.param('prod_id', 'Filter by product ID')
     @api.marshal_list_with(product_crawl_output_model)
     def get(self):
+        prod_id = request.args.get('prod_id')
+        if prod_id:
+            return ProductCrawl.query.filter_by(prod_id=prod_id).all(), 200
         return ProductCrawl.query.all(), 200
 
     @api.expect(product_crawl_input_model)
