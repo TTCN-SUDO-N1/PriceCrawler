@@ -1,7 +1,7 @@
 from flask import request, jsonify
 from flask_restx import Namespace,Resource,fields
-from NewApp.models import Enemy
 from NewApp import db
+from NewApp.models import Enemy
 
 api = Namespace('enemy',description='Enemy related operations')
 

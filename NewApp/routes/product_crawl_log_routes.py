@@ -1,7 +1,7 @@
 from flask import request
 from flask_restx import Namespace, Resource, fields
-from NewApp.models import ProductCrawlLog
 from NewApp import db
+from NewApp.models import ProductCrawlLog
 
 api = Namespace('product_crawl_log', description='ProductCrawlLog related operations')
 
