@@ -41,7 +41,10 @@ class ProductCrawlList(Resource):
     def get(self):
         prod_id = request.args.get('prod_id')
         if prod_id:
-            return ProductCrawl.query.filter_by(prod_id=prod_id).all(), 200
+            crawls = ProductCrawl.query.filter_by(prod_id=prod_id).all()
+            if not crawls and prod_id:
+                api.abort(404, f"No enemy products found for product ID: {prod_id}")
+            return crawls, 200
         return ProductCrawl.query.all(), 200
 
     @api.expect(product_crawl_input_model)

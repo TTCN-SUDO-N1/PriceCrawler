@@ -24,8 +24,12 @@ product_crawl_log_output_model = api.model('ProductCrawlLogOutput', {
 @api.route('/')
 class ProductCrawlLogList(Resource):
     @api.doc('list_product_crawl_logs', description='Get a list of all product crawl logs')
+    @api.param('product_crawl_id', 'Filter logs by product crawl ID', _in='query')
     @api.marshal_list_with(product_crawl_log_output_model)
     def get(self):
+        product_crawl_id = request.args.get('product_crawl_id')
+        if product_crawl_id:
+            return ProductCrawlLog.query.filter_by(product_crawl_id=product_crawl_id).all(), 200
         return ProductCrawlLog.query.all(), 200
 
     @api.expect(product_crawl_log_input_model)

@@ -156,18 +156,23 @@
                                 <button onclick="event.stopPropagation(); deleteProduct(${product.id})" class="bg-red-500 text-white px-2 py-1 rounded">🗑️</button>
                                 <button onclick="event.stopPropagation(); crawlProduct(${product.id})" class="bg-blue-600 text-white px-2 py-1 rounded">🔄 Crawl</button>
                             </td>
+                        </tr>
+                        <tr class="enemy-container hidden" id="enemyContainer-${product.id}">
+                            <td colspan="6" class="p-0">
+                                <div class="bg-gray-50 p-4 border-l-4 border-blue-400">
+                                    <div id="enemyContent-${product.id}" class="relative">
+                                        <div class="text-center py-5">
+                                            <span class="text-gray-500">Nhấp để tải thông tin đối thủ</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
                         </tr>`;
                     });
                     html += '</tbody></table>';
                     container.innerHTML = html;
-                    
-                    // Clear any previously displayed enemy info
                     document.getElementById('enemiesContainer').innerHTML = '';
                     document.getElementById('logsContainer').innerHTML = '';
-                    
-                    // Reset selection state
-                    selectedProductId = null;
-                    selectedEnemyId = null;
                 })
                 .catch(function (error) {
                     document.getElementById('productsContainer').innerHTML = '<div class="text-center py-10 text-red-500">Lỗi khi tải sản phẩm. Vui lòng thử lại.</div>';
@@ -186,10 +191,15 @@
                     row.classList.add('hover:bg-blue-50');
                 }
                 
-                // Clear selection and enemy display
+                // Hide the enemy container for this product
+                const enemyContainer = document.getElementById(`enemyContainer-${productId}`);
+                if (enemyContainer) {
+                    enemyContainer.classList.add('hidden');
+                }
+                
+                // Clear selection and log display
                 selectedProductId = null;
                 selectedEnemyId = null;
-                document.getElementById('enemiesContainer').innerHTML = '';
                 document.getElementById('logsContainer').innerHTML = '';
                 return;
             }
@@ -198,6 +208,11 @@
             document.querySelectorAll('.product-row').forEach(r => {
                 r.classList.remove('bg-blue-100');
                 r.classList.add('hover:bg-blue-50');
+            });
+            
+            // Hide all enemy containers
+            document.querySelectorAll('.enemy-container').forEach(container => {
+                container.classList.add('hidden');
             });
             
             // Set this product as selected
@@ -211,117 +226,221 @@
                 row.classList.remove('hover:bg-blue-50');
             }
             
-            // Load enemies for this product only
-            loadEnemies(productId);
+            // Show and load enemies for this product
+            const enemyContainer = document.getElementById(`enemyContainer-${productId}`);
+            if (enemyContainer) {
+                enemyContainer.classList.remove('hidden');
+                const enemyContent = document.getElementById(`enemyContent-${productId}`);
+                if (enemyContent) {
+                    loadEnemiesIntoContainer(productId, enemyContent);
+                }
+            }
+            
             document.getElementById('logsContainer').innerHTML = '';
         }
 
-        function loadEnemies(productId) {
-            const enemiesContainer = document.getElementById('enemiesContainer');
-            enemiesContainer.innerHTML = '<div class="text-center py-5"><span class="text-gray-500">⏳ Đang tải dữ liệu đối thủ...</span></div>';
+        function loadEnemiesIntoContainer(productId, container) {
+            container.innerHTML = '<div class="text-center py-5"><span class="text-gray-500">⏳ Đang tải dữ liệu đối thủ...</span></div>';
             
-            axios.get(`/api/product-crawls?prod_id=${productId}`)
-                .then(function (response) {
-                    const crawls = response.data;
-                    let html = `<div class="bg-gray-50 p-4 border-l-4 border-blue-400 rounded">
-                        <div class='mb-2 flex justify-between items-center'>
-                            <h3 class='font-bold text-lg'>Sản phẩm đối thủ</h3>
-                            <div class="flex space-x-2">
-                                <button onclick="crawlAllEnemies(${productId});event.stopPropagation();" class="bg-blue-600 text-white px-3 py-1 rounded" id="crawlAllButton">🔄 Crawl All</button>
-                                <button onclick="openEnemyModal(${productId});event.stopPropagation();" class="bg-green-600 text-white px-3 py-1 rounded">➕ Thêm đối thủ</button>
-                            </div>
-                        </div>`;
+            // First get the product details to show product name
+            axios.get(`/api/product/${productId}`)
+                .then(function(productResponse) {
+                    const product = productResponse.data;
                     
-                    if (crawls.length === 0) {
-                        html += '<div class="text-gray-500 py-3">Chưa có sản phẩm đối thủ nào. Hãy thêm mới!</div>';
-                    } else {
-                        html += `<table class="min-w-full text-sm text-left text-gray-700">
-                        <thead class="bg-gray-100">
-                            <tr>
-                                <th>Link</th>
-                                <th>Đối thủ</th>
-                                <th class="text-center">Hành động</th>
-                            </tr>
-                        </thead>
-                        <tbody>`;
-                        crawls.forEach(crawl => {
-                            html += `<tr class="cursor-pointer hover:bg-blue-50 enemy-row" data-enemy-id="${crawl.id}" onclick="selectEnemy(${crawl.id}, this)">
-                                <td><a href="${crawl.link}" target="_blank" class="text-blue-600 hover:underline" onclick="event.stopPropagation()">${crawl.link}</a></td>
-                                <td>${crawl.enemy ? crawl.enemy.name + ' (' + crawl.enemy.domain + ')' : ''}</td>
-                                <td class="text-center space-x-1">
-                                    <button onclick="event.stopPropagation(); openEditEnemyModal(${productId},${crawl.id},'${crawl.link}')" class="bg-yellow-400 text-white px-2 py-1 rounded">✏️</button>
-                                    <button onclick="event.stopPropagation(); deleteEnemy(${productId},${crawl.id})" class="bg-red-500 text-white px-2 py-1 rounded">🗑️</button>
-                                    <button onclick="event.stopPropagation(); crawlEnemy(${crawl.id})" class="bg-blue-600 text-white px-2 py-1 rounded">🔄 Crawl</button>
-                                </td>
-                            </tr>`;
+                    // Then get the enemy products
+                    return axios.get(`/api/product-crawls?prod_id=${productId}`)
+                        .then(function(response) {
+                            const crawls = response.data || [];
+                            let html = `<div class='mb-2 flex justify-between items-center'>
+                                <h3 class='font-bold text-lg'>Sản phẩm đối thủ</h3>
+                                <div class="flex space-x-2">
+                                    <button onclick="crawlAllEnemies(${productId});event.stopPropagation();" class="bg-blue-600 text-white px-3 py-1 rounded" id="crawlAllButton-${productId}">🔄 Crawl All</button>
+                                    <button onclick="openEnemyModal(${productId});event.stopPropagation();" class="bg-green-600 text-white px-3 py-1 rounded">➕ Thêm đối thủ</button>
+                                </div>
+                            </div>`;
+                            
+                            if (!crawls || crawls.length === 0) {
+                                html += '<div class="text-center py-4 text-gray-500 bg-gray-50 rounded border border-gray-200">Không tìm thấy sản phẩm đối thủ nào. Hãy thêm mới!</div>';
+                            } else {
+                                html += `<table class="min-w-full text-sm text-left text-gray-700">
+                                <thead class="bg-gray-100">
+                                    <tr>
+                                        <th>Tên sản phẩm</th>
+                                        <th>Đối thủ</th>
+                                        <th>Giá mới nhất</th>
+                                        <th class="text-center">Hành động</th>
+                                    </tr>
+                                </thead>
+                                <tbody>`;
+                                
+                                // Create an array of promises to fetch latest price for each crawl
+                                const pricePromises = crawls.map(crawl => {
+                                    return axios.get(`/api/product-crawl-logs?product_crawl_id=${crawl.id}`)
+                                        .then(logResponse => {
+                                            const logs = logResponse.data;
+                                            // Sort logs by timestamp to get the latest
+                                            logs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                                            return {
+                                                crawlId: crawl.id,
+                                                latestPrice: logs.length > 0 ? logs[0].price : null,
+                                                latestName: logs.length > 0 ? logs[0].name : null
+                                            };
+                                        })
+                                        .catch(() => {
+                                            return { 
+                                                crawlId: crawl.id,
+                                                latestPrice: null,
+                                                latestName: null
+                                            };
+                                        });
+                                });
+                                
+                                // Wait for all price data to be fetched
+                                Promise.all(pricePromises)
+                                    .then(priceData => {
+                                        // Create a map for quick lookup
+                                        const priceMap = {};
+                                        priceData.forEach(data => {
+                                            priceMap[data.crawlId] = {
+                                                price: data.latestPrice,
+                                                name: data.latestName
+                                            };
+                                        });
+                                        
+                                        // Now build the table with the price data
+                                        crawls.forEach(crawl => {
+                                            const priceInfo = priceMap[crawl.id] || { price: null, name: null };
+                                            const displayName = priceInfo.name || product.name || "Sản phẩm";
+                                            const displayPrice = priceInfo.price ? `${priceInfo.price.toLocaleString()} VND` : 'Chưa có giá';
+                                            
+                                            html += `<tr class="cursor-pointer hover:bg-blue-50 enemy-row" data-enemy-id="${crawl.id}" onclick="selectEnemy(${crawl.id}, this)">
+                                                <td>
+                                                    <a href="${crawl.link}" target="_blank" class="text-blue-600 hover:underline" onclick="event.stopPropagation()">${displayName}</a>
+                                                </td>
+                                                <td>${crawl.enemy ? crawl.enemy.name : ''}</td>
+                                                <td>${displayPrice}</td>
+                                                <td class="text-center space-x-1">
+                                                    <button onclick="event.stopPropagation(); openEditEnemyModal(${productId},${crawl.id},'${crawl.link}')" class="bg-yellow-400 text-white px-2 py-1 rounded">✏️</button>
+                                                    <button onclick="event.stopPropagation(); deleteEnemy(${productId},${crawl.id})" class="bg-red-500 text-white px-2 py-1 rounded">🗑️</button>
+                                                    <button onclick="event.stopPropagation(); crawlEnemy(${crawl.id})" class="bg-blue-600 text-white px-2 py-1 rounded">🔄 Crawl</button>
+                                                </td>
+                                            </tr>`;
+                                        });
+                                        
+                                        html += '</tbody></table>';
+                                        container.innerHTML = html;
+                                    });
+                            }
                         });
-                        html += '</tbody></table>';
-                    }
-                    
-                    html += '</div>';
-                    enemiesContainer.innerHTML = html;
                 })
                 .catch(function (error) {
-                    enemiesContainer.innerHTML = '<div class="text-center py-5 text-red-500">Lỗi khi tải sản phẩm đối thủ.</div>';
+                    console.error('Error loading enemy products:', error);
+                    
+                    // Check if the error is a 404 Not Found (meaning no products found)
+                    if (error.response && error.response.status === 404) {
+                        container.innerHTML = '<div class="text-center py-4 text-gray-500 bg-gray-50 rounded border border-gray-200">Không tìm thấy sản phẩm đối thủ nào. Hãy thêm mới!</div>';
+                    } else {
+                        container.innerHTML = '<div class="text-center py-5 text-red-500">Lỗi khi tải sản phẩm đối thủ.</div>';
+                    }
                 });
+        }
+        
+        // Keep this function for backward compatibility or redirect to the new function
+        function loadEnemies(productId) {
+            const enemiesContainer = document.getElementById('enemiesContainer');
+            enemiesContainer.innerHTML = '';
+            
+            // Just in case this function is still being called from some places
+            const enemyContent = document.getElementById(`enemyContent-${productId}`);
+            if (enemyContent) {
+                loadEnemiesIntoContainer(productId, enemyContent);
+            }
         }
 
         function selectEnemy(enemyCrawlId, row) {
             // Check if this enemy is already selected
             const isAlreadySelected = selectedEnemyId === enemyCrawlId;
             
-            // Find all enemy rows in the current view
-            const enemyRows = document.querySelectorAll('.enemy-row');
-            
-            // Reset styling on all enemy rows
-            enemyRows.forEach(r => {
-                r.classList.remove('bg-blue-100');
-                r.classList.add('hover:bg-blue-50');
-            });
-            
-            // Check if logs container already exists
-            const logsContainer = document.getElementById('logsContainer');
-            
-            // If already selected, hide logs and deselect
+            // If already selected, close it
             if (isAlreadySelected) {
-                logsContainer.innerHTML = '';
+                // Remove active styling
+                if (row) {
+                    row.classList.remove('bg-blue-100');
+                    row.classList.add('hover:bg-blue-50');
+                }
+                
+                // Remove log container if exists
+                const logContainer = document.querySelector(`.log-container[data-enemy-id="${enemyCrawlId}"]`);
+                if (logContainer) {
+                    logContainer.remove();
+                }
+                
+                // Clear logs display
+                document.getElementById('logsContainer').innerHTML = '';
                 selectedEnemyId = null;
                 return;
             }
             
-            // Set as selected
+            // Set as selected enemy
             selectedEnemyId = enemyCrawlId;
             
-            // Add styling to the selected row
-            if (row) {
-                row.classList.add('bg-blue-100');
-                row.classList.remove('hover:bg-blue-50');
-            } else {
-                // Find the row if we don't have it
-                enemyRows.forEach(r => {
-                    if (r.getAttribute('data-enemy-id') == enemyCrawlId) {
-                        r.classList.add('bg-blue-100');
-                        r.classList.remove('hover:bg-blue-50');
-                    }
+            // Find the product this enemy belongs to
+            if (selectedProductId) {
+                // Remove active styling from all enemy rows
+                document.querySelectorAll('.enemy-row').forEach(r => {
+                    r.classList.remove('bg-blue-100');
+                    r.classList.add('hover:bg-blue-50');
                 });
+                
+                // Add active styling to this row
+                if (row) {
+                    row.classList.add('bg-blue-100');
+                    row.classList.remove('hover:bg-blue-50');
+                }
+                
+                // Remove all existing log containers
+                const allLogContainers = document.querySelectorAll('.log-container');
+                allLogContainers.forEach(container => {
+                    container.remove();
+                });
+                
+                // Insert new log container
+                const logRow = document.createElement('tr');
+                logRow.className = 'log-container';
+                logRow.setAttribute('data-enemy-id', enemyCrawlId);
+                logRow.innerHTML = `<td colspan="3" class="p-0">
+                    <div class="bg-blue-50 p-3 border-l-4 border-blue-300">
+                        <div id="logs-${enemyCrawlId}" class="py-2">
+                            <div class="text-center">⏳ Đang tải lịch sử crawl...</div>
+                        </div>
+                    </div>
+                </td>`;
+                
+                // Insert after enemy row
+                if (row) {
+                    row.parentNode.insertBefore(logRow, row.nextSibling);
+                }
+                
+                // Load logs
+                const logsContainer = document.getElementById(`logs-${enemyCrawlId}`);
+                if (logsContainer) {
+                    loadLogs(enemyCrawlId, logsContainer);
+                }
             }
-            
-            // Show loading state in logs container
-            logsContainer.innerHTML = '<div class="bg-blue-50 p-4 border-l-4 border-blue-300 rounded"><div class="text-center py-2">⏳ Đang tải lịch sử crawl...</div></div>';
-            
-            // Load the logs
-            loadLogs(enemyCrawlId);
         }
 
-        function loadLogs(enemyCrawlId) {
-            const logsContainer = document.getElementById('logsContainer');
-            logsContainer.innerHTML = '<div class="text-center py-5"><span class="text-gray-500">⏳ Đang tải lịch sử crawl...</span></div>';
+        function loadLogs(enemyCrawlId, container = null) {
+            const logsContainer = container || document.getElementById(`logs-${enemyCrawlId}`);
+            
+            if (!logsContainer) {
+                // If we don't have a container, use the original logs container
+                document.getElementById('logsContainer').innerHTML = '<div class="text-center py-5"><span class="text-gray-500">⏳ Đang tải lịch sử crawl...</span></div>';
+            }
             
             axios.get(`/api/product-crawl-logs?product_crawl_id=${enemyCrawlId}`)
                 .then(function (response) {
                     const logs = response.data;
-                    let html = `<div class="bg-blue-50 p-4 border-l-4 border-blue-300 rounded">
-                        <div class='mb-2 font-bold text-lg'>Lịch sử crawl</div>`;
+                    let html = `<div class='mb-2 font-bold text-lg'>Lịch sử crawl</div>`;
                     if (!logs.length) {
                         html += '<div class="text-gray-500">Chưa có lịch sử crawl.</div>';
                     } else {
@@ -331,13 +450,21 @@
                         });
                         html += '</ul>';
                     }
-                    html += '</div>';
                     
-                    logsContainer.innerHTML = html;
+                    if (logsContainer) {
+                        logsContainer.innerHTML = html;
+                    } else {
+                        document.getElementById('logsContainer').innerHTML = html;
+                    }
                 })
                 .catch(function (error) {
-                    const errorHtml = '<div class="bg-blue-50 p-4 border-l-4 border-red-300 rounded"><div class="text-center py-3 text-red-500">Lỗi khi tải lịch sử crawl.</div></div>';
-                    logsContainer.innerHTML = errorHtml;
+                    const errorHtml = '<div class="text-center py-3 text-red-500">Lỗi khi tải lịch sử crawl.</div>';
+                    
+                    if (logsContainer) {
+                        logsContainer.innerHTML = errorHtml;
+                    } else {
+                        document.getElementById('logsContainer').innerHTML = errorHtml;
+                    }
                 });
         }
 
@@ -415,57 +542,58 @@
             saveBtn.disabled = true;
             
             try {
-                // Extract domain from link
+                // Extract domain from the hostname (clickbuy.com.vn from https://clickbuy.com.vn/...)
                 const url = new URL(link);
-                const domain = url.hostname;
+                const hostname = url.hostname;
+                // Get the domain which is the first part of the hostname
+                const domain = hostname.split('.')[0];
                 
-                // Use the API to search for enemy by domain with auto_create=true
+                // Use the API to search for enemy by domain
                 axios.get(`/api/enemies/by-domain?domain=${encodeURIComponent(domain)}&auto_create=true`)
                     .then(response => {
-                        // We found or created an enemy via the API
-                        const enemy = response.data;
-                        const isNewEnemy = response.status === 201;
+                        const matchedEnemy = response.data;
                         
-                        // Update the dropdown selection
-                        const select = document.getElementById('enemySelect');
-                        
-                        // Check if we need to add this enemy to the dropdown (if it's new)
-                        let needToAdd = true;
-                        const options = select.querySelectorAll('option');
-                        for (let i = 0; i < options.length; i++) {
-                            if (options[i].value == enemy.id) {
-                                needToAdd = false;
-                                break;
-                            }
+                        if (response.status === 201) {
+                            // Enemy was auto-created by the API
+                            // Update the dropdown with the new enemy
+                            const select = document.getElementById('enemySelect');
+                            select.innerHTML += `<option value="${matchedEnemy.id}">${matchedEnemy.name} (${matchedEnemy.domain})</option>`;
+                            select.value = matchedEnemy.id;
+                            
+                            document.getElementById('autoDetectStatus').innerHTML = `
+                                <span class="text-green-600">✓ Tự động tạo đối thủ mới: ${matchedEnemy.name}</span>`;
+                            callback(matchedEnemy.id);
+                            
+                            saveBtn.innerText = originalBtnText;
+                            saveBtn.disabled = false;
+                            return;
+                        } else if (response.status === 204) {
+                            // Handle "no content" status - no enemy found and couldn't be auto-created
+                            document.getElementById('autoDetectStatus').innerHTML = `<span class="text-blue-600">⏳ Không tìm thấy đối thủ, đang tự động tạo mới...</span>`;
+                            createNewEnemy(domain, callback, saveBtn, originalBtnText);
+                            return;
                         }
                         
-                        if (needToAdd) {
-                            select.innerHTML += `<option value="${enemy.id}">${enemy.name} (${enemy.domain})</option>`;
-                        }
-                        
-                        // Set the selected value
-                        select.value = enemy.id;
-                        
-                        // Update status message
-                        if (isNewEnemy) {
-                            document.getElementById('autoDetectStatus').innerHTML = 
-                                `<span class="text-green-600">✓ Tự động tạo đối thủ mới: ${enemy.name}</span>`;
+                        // We found a match using the API (status 200)
+                        if (matchedEnemy && matchedEnemy.id && matchedEnemy.name) {
+                            document.getElementById('enemySelect').value = matchedEnemy.id;
+                            document.getElementById('autoDetectStatus').innerHTML = `<span class="text-green-600">✓ Đã phát hiện: ${matchedEnemy.name}</span>`;
+                            callback(matchedEnemy.id);
                         } else {
-                            document.getElementById('autoDetectStatus').innerHTML = 
-                                `<span class="text-green-600">✓ Đã phát hiện: ${enemy.name}</span>`;
+                            // Fallback: Create a new enemy if we somehow got here with invalid data
+                            document.getElementById('autoDetectStatus').innerHTML = `<span class="text-blue-600">⏳ Không tìm thấy đối thủ, đang tự động tạo mới...</span>`;
+                            createNewEnemy(domain, callback, saveBtn, originalBtnText);
                         }
                         
-                        // Return the enemy ID to the callback
-                        callback(enemy.id);
-                        
-                        // Reset button state
-                        saveBtn.innerText = originalBtnText;
-                        saveBtn.disabled = false;
+                        if (matchedEnemy && matchedEnemy.id) {
+                            // Only restore button state if we found a match (otherwise done in the create callback)
+                            saveBtn.innerText = originalBtnText;
+                            saveBtn.disabled = false;
+                        }
                     })
                     .catch(error => {
-                        console.error('Error detecting/creating enemy:', error);
-                        document.getElementById('autoDetectStatus').innerHTML = 
-                            `<span class="text-red-600">✗ Lỗi: ${error.response?.data?.message || 'Không thể xác định đối thủ'}</span>`;
+                        console.error('Error fetching enemies:', error);
+                        document.getElementById('autoDetectStatus').innerHTML = `<span class="text-red-600">✗ Lỗi khi tìm kiếm đối thủ</span>`;
                         callback(null);
                         saveBtn.innerText = originalBtnText;
                         saveBtn.disabled = false;
@@ -479,19 +607,71 @@
             }
         }
         
+        // Function is now handled by the backend API
+        function createNewEnemy(domain, callback, saveBtn, originalBtnText) {
+            // Fallback function in case the API doesn't auto-create
+            let enemyName;
+            
+            // Check if domain contains dots
+            if (domain.includes('.')) {
+                enemyName = domain.split('.')[0];
+            } else {
+                // If no dots, use the whole domain
+                enemyName = domain;
+            }
+            
+            // Capitalize the first letter
+            enemyName = enemyName.charAt(0).toUpperCase() + enemyName.slice(1);
+            
+            // Create new enemy manually as a fallback
+            axios.post('/api/enemies/', {
+                name: enemyName,
+                domain: domain
+            })
+            .then(createResponse => {
+                const newEnemy = createResponse.data;
+                // Update the dropdown
+                const select = document.getElementById('enemySelect');
+                select.innerHTML += `<option value="${newEnemy.id}">${newEnemy.name} (${newEnemy.domain})</option>`;
+                select.value = newEnemy.id;
+                
+                document.getElementById('autoDetectStatus').innerHTML = `
+                    <span class="text-green-600">✓ Tự động tạo đối thủ mới: ${newEnemy.name}</span>`;
+                callback(newEnemy.id);
+            })
+            .catch(createError => {
+                console.error('Error creating new enemy:', createError);
+                document.getElementById('autoDetectStatus').innerHTML = `
+                    <span class="text-red-600">✗ Không thể tạo đối thủ mới. Vui lòng chọn đối thủ thủ công.</span>`;
+                callback(null);
+            })
+            .finally(() => {
+                saveBtn.innerText = originalBtnText;
+                saveBtn.disabled = false;
+            });
+        }
+        
         function saveEnemyLink(productId, enemyId, link, enemy_id) {
             if (enemyId) {
                 axios.put(`/api/product-crawls/${enemyId}`, { prod_id: productId, link, enemy_id: enemy_id })
                     .then(() => {
                         closeEnemyModal();
-                        loadEnemies(productId);
+                        // Refresh enemies in the product container
+                        const enemyContent = document.getElementById(`enemyContent-${productId}`);
+                        if (enemyContent) {
+                            loadEnemiesIntoContainer(productId, enemyContent);
+                        }
                     })
                     .catch(() => alert('Lỗi khi cập nhật đối thủ.'));
             } else {
                 axios.post(`/api/product-crawls/`, { prod_id: productId, link, enemy_id: enemy_id })
                     .then(() => {
                         closeEnemyModal();
-                        loadEnemies(productId);
+                        // Refresh enemies in the product container
+                        const enemyContent = document.getElementById(`enemyContent-${productId}`);
+                        if (enemyContent) {
+                            loadEnemiesIntoContainer(productId, enemyContent);
+                        }
                     })
                     .catch(() => alert('Lỗi khi thêm đối thủ.'));
             }
@@ -501,7 +681,11 @@
             if (!confirm('Bạn có chắc muốn xóa sản phẩm đối thủ này?')) return;
             axios.delete(`/api/product-crawls/${crawlId}`)
                 .then(() => {
-                    loadEnemies(productId);
+                    // Refresh the enemies in the correct container
+                    const enemyContent = document.getElementById(`enemyContent-${productId}`);
+                    if (enemyContent) {
+                        loadEnemiesIntoContainer(productId, enemyContent);
+                    }
                     document.getElementById('logsContainer').innerHTML = '';
                 })
                 .catch(() => alert('Lỗi khi xóa đối thủ.'));
@@ -648,11 +832,16 @@
         }
 
         function refreshData() {
-            loadProducts();
-            document.getElementById('enemiesContainer').innerHTML = '';
-            document.getElementById('logsContainer').innerHTML = '';
+            // Reset selection state
             selectedProductId = null;
             selectedEnemyId = null;
+            
+            // Clear display containers
+            document.getElementById('enemiesContainer').innerHTML = '';
+            document.getElementById('logsContainer').innerHTML = '';
+            
+            // Reload products
+            loadProducts();
         }
 
         // Implement product and enemy crawling functions
@@ -710,87 +899,30 @@
                 });
         }
 
-        function crawlAllEnemies(productId) {
-            const crawlAllBtn = document.getElementById('crawlAllButton');
-            const originalText = crawlAllBtn.innerHTML;
-            crawlAllBtn.innerHTML = '⏳ Đang crawl tất cả...';
-            crawlAllBtn.disabled = true;
-            
-            // Get all enemies for this product
-            axios.get(`/api/product-crawls?prod_id=${productId}`)
-                .then(function(response) {
-                    const crawls = response.data;
-                    if (crawls.length === 0) {
-                        crawlAllBtn.innerHTML = '⚠️ Không có đối thủ';
-                        setTimeout(() => {
-                            crawlAllBtn.innerHTML = originalText;
-                            crawlAllBtn.disabled = false;
-                        }, 2000);
-                        return;
-                    }
-                    
-                    let completedCrawls = 0;
-                    let failedCrawls = 0;
-                    
-                    // Function to update button text with progress
-                    const updateProgress = () => {
-                        crawlAllBtn.innerHTML = `⏳ ${completedCrawls}/${crawls.length}`;
-                        if (completedCrawls + failedCrawls === crawls.length) {
-                            if (failedCrawls > 0) {
-                                crawlAllBtn.innerHTML = `✓ ${completedCrawls}/${crawls.length} (${failedCrawls} lỗi)`;
-                            } else {
-                                crawlAllBtn.innerHTML = `✓ Hoàn tất ${crawls.length}/${crawls.length}`;
-                            }
-                            setTimeout(() => {
-                                crawlAllBtn.innerHTML = originalText;
-                                crawlAllBtn.disabled = false;
-                            }, 2000);
-                            
-                            // Reload enemies to refresh data
-                            loadEnemies(productId);
-                            
-                            // Reload logs if an enemy is selected
-                            if (selectedEnemyId) {
-                                loadLogs(selectedEnemyId);
-                            }
-                        }
-                    }
-                    
-                    // Crawl each enemy product
-                    crawls.forEach(crawl => {
-                        axios.post(`/api/product-crawls/crawl-link`, { crawl_id: crawl.id })
-                            .then(function() {
-                                completedCrawls++;
-                                updateProgress();
-                            })
-                            .catch(function() {
-                                failedCrawls++;
-                                updateProgress();
-                            });
-                    });
-                })
-                .catch(function(error) {
-                    console.error('Error fetching enemies for crawling:', error);
-                    crawlAllBtn.innerHTML = '✗ Lỗi';
-                    setTimeout(() => {
-                        crawlAllBtn.innerHTML = originalText;
-                        crawlAllBtn.disabled = false;
-                    }, 2000);
-                });
-        }
-
         function crawlEnemy(enemyCrawlId) {
-            // Find the enemy row by its data-enemy-id attribute
-            const enemyRow = document.querySelector(`.enemy-row[data-enemy-id="${enemyCrawlId}"]`);
+            // First, we need to find which product this enemy belongs to
+            let productId = selectedProductId;
             let crawlBtn = null;
             
-            // Find the crawl button in the enemy row
-            if (enemyRow) {
-                const cells = enemyRow.querySelectorAll('td');
-                if (cells.length > 0) {
-                    const actionBtns = cells[cells.length - 1].querySelectorAll('button');
-                    if (actionBtns.length >= 3) {
-                        crawlBtn = actionBtns[2]; // The third button should be the crawl button
+            // Find the enemy's row and crawl button in its product container
+            if (productId) {
+                const enemyContent = document.getElementById(`enemyContent-${productId}`);
+                if (enemyContent) {
+                    const enemyRows = enemyContent.querySelectorAll('tr');
+                    
+                    // Find the row corresponding to this enemy and get its crawl button
+                    for (let i = 0; i < enemyRows.length; i++) {
+                        const row = enemyRows[i];
+                        if (row.onclick && row.onclick.toString().includes(enemyCrawlId)) {
+                            const cells = row.querySelectorAll('td');
+                            if (cells.length > 0) {
+                                const actionBtns = cells[cells.length - 1].querySelectorAll('button');
+                                if (actionBtns.length >= 3) {
+                                    crawlBtn = actionBtns[2];
+                                    break;
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -826,6 +958,78 @@
             } else {
                 alert('Không thể tìm thấy nút crawl cho sản phẩm đối thủ này.');
             }
+        }
+
+        function crawlAllEnemies(productId) {
+            const crawlAllBtn = document.getElementById(`crawlAllButton-${productId}`);
+            const originalText = crawlAllBtn.innerHTML;
+            crawlAllBtn.innerHTML = '⏳ Đang crawl tất cả...';
+            crawlAllBtn.disabled = true;
+            
+            // Get all enemies for this product
+            axios.get(`/api/product-crawls?prod_id=${productId}`)
+                .then(function(response) {
+                    const crawls = response.data;
+                    if (crawls.length === 0) {
+                        crawlAllBtn.innerHTML = '⚠️ Không có đối thủ';
+                        setTimeout(() => {
+                            crawlAllBtn.innerHTML = originalText;
+                            crawlAllBtn.disabled = false;
+                        }, 2000);
+                        return;
+                    }
+                    
+                    let completedCrawls = 0;
+                    let failedCrawls = 0;
+                    
+                    // Function to update button text with progress
+                    const updateProgress = () => {
+                        crawlAllBtn.innerHTML = `⏳ ${completedCrawls}/${crawls.length}`;
+                        if (completedCrawls + failedCrawls === crawls.length) {
+                            if (failedCrawls > 0) {
+                                crawlAllBtn.innerHTML = `✓ ${completedCrawls}/${crawls.length} (${failedCrawls} lỗi)`;
+                            } else {
+                                crawlAllBtn.innerHTML = `✓ Hoàn tất ${crawls.length}/${crawls.length}`;
+                            }
+                            setTimeout(() => {
+                                crawlAllBtn.innerHTML = originalText;
+                                crawlAllBtn.disabled = false;
+                            }, 2000);
+                            
+                            // Reload enemies to refresh data
+                            const enemyContent = document.getElementById(`enemyContent-${productId}`);
+                            if (enemyContent) {
+                                loadEnemiesIntoContainer(productId, enemyContent);
+                            }
+                            
+                            // Reload logs if an enemy is selected
+                            if (selectedEnemyId) {
+                                loadLogs(selectedEnemyId);
+                            }
+                        }
+                    }
+                    
+                    // Crawl each enemy product
+                    crawls.forEach(crawl => {
+                        axios.post(`/api/product-crawls/crawl-link`, { crawl_id: crawl.id })
+                            .then(function() {
+                                completedCrawls++;
+                                updateProgress();
+                            })
+                            .catch(function() {
+                                failedCrawls++;
+                                updateProgress();
+                            });
+                    });
+                })
+                .catch(function(error) {
+                    console.error('Error fetching enemies for crawling:', error);
+                    crawlAllBtn.innerHTML = '✗ Lỗi';
+                    setTimeout(() => {
+                        crawlAllBtn.innerHTML = originalText;
+                        crawlAllBtn.disabled = false;
+                    }, 2000);
+                });
         }
 
         function detectProductInfo() {

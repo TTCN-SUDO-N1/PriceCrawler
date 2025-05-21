@@ -71,43 +71,41 @@ class EnemyByDomainResource(Resource):
     @api.param('auto_create', 'Automatically create a new enemy if not found', _in='query', type='boolean')
     @api.marshal_with(enemy_output_model)
     def get(self):
-        domain = request.args.get('domain')
-        auto_create = request.args.get('auto_create', 'false').lower() == 'true'
-        
-        if not domain:
-            api.abort(400, 'Domain parameter is required')
+        try:
+            domain = request.args.get('domain')
+            auto_create = request.args.get('auto_create', 'false').lower() == 'true'
             
-        # Remove www. if present
-        normalized_domain = domain.replace('www.', '')
-        
-        # Try to find an exact match first
-        enemy = Enemy.query.filter(Enemy.domain == normalized_domain).first()
-        
-        # If no exact match, try to find a partial match
-        if not enemy:
-            enemies = Enemy.query.all()
-            for e in enemies:
-                e_domain = e.domain.replace('www.', '')
-                if e_domain in normalized_domain or normalized_domain in e_domain:
-                    enemy = e
-                    break
-        
-        # If still no match and auto_create is True, create a new enemy
-        if not enemy and auto_create:
-            # Generate a name from the domain
-            enemy_name = normalized_domain.split('.')[0]
-            # Capitalize the first letter
-            enemy_name = enemy_name.capitalize()
+            if not domain:
+                api.abort(400, 'Domain parameter is required')
             
-            new_enemy = Enemy(
-                name=enemy_name,
-                domain=normalized_domain
-            )
-            db.session.add(new_enemy)
-            db.session.commit()
-            return new_enemy, 201
+            # Try to find an exact match first
+            enemy = Enemy.query.filter(Enemy.domain == domain).first()
             
-        if enemy:
-            return enemy, 200
-        else:
-            api.abort(404, 'No enemy found for this domain')
+            if enemy:
+                return enemy, 200
+            elif auto_create:
+                # Auto create enemy
+                # Use the domain as the name (first part before any dots)
+                if '.' in domain:
+                    enemy_name = domain.split('.')[0]
+                else:
+                    enemy_name = domain
+                
+                # Capitalize the first letter
+                enemy_name = enemy_name.capitalize()
+                
+                new_enemy = Enemy(
+                    name=enemy_name,
+                    domain=domain
+                )
+                db.session.add(new_enemy)
+                db.session.commit()
+                return new_enemy, 201
+            else:
+                # Return null response with 204 status code
+                # This will ensure the frontend recognizes it as "no match found"
+                return None, 204
+                
+        except Exception as e:
+            print(f"Error in by-domain endpoint: {str(e)}")
+            api.abort(500, f'Server error: {str(e)}')

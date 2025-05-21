@@ -17,10 +17,7 @@ chromeOrFirefox = os.getenv("CHROME_OR_FIREFOX")
 def scrape(url):
     print("Scraping URL:", url)
     
-
     webDriverPath = DriverPath
-    print("WebDriver Path:", webDriverPath)
-    print("Browser choice:", chromeOrFirefox)
     if chromeOrFirefox == "firefox":
         from selenium.webdriver.firefox.service import Service
         options = webdriver.FirefoxOptions()
