@@ -76,3 +76,83 @@ class ProductCrawlLogResource(Resource):
         db.session.delete(log)
         db.session.commit()
         return '', 204
+
+@api.route('/price-history/<int:product_crawl_id>')
+@api.param('product_crawl_id', 'Product crawl unique identifier')
+@api.response(404, 'Product crawl not found')
+class ProductCrawlPriceHistory(Resource):
+    @api.doc('get_price_history', description='Get price history for a product crawl with chart data')
+    def get(self, product_crawl_id):
+        # First verify the product crawl exists
+        from NewApp.models import ProductCrawl
+        product_crawl = ProductCrawl.query.get_or_404(product_crawl_id)
+        
+        # Get all logs for this product crawl, ordered by timestamp
+        logs = ProductCrawlLog.query.filter_by(product_crawl_id=product_crawl_id).order_by(ProductCrawlLog.timestamp.asc()).all()
+        
+        if not logs:
+            return {
+                'product_crawl': {
+                    'id': product_crawl.id,
+                    'link': product_crawl.link,
+                    'product': product_crawl.product.name if product_crawl.product else None,
+                    'enemy': product_crawl.enemy.name if product_crawl.enemy else None
+                },
+                'price_history': [],
+                'chart_data': {
+                    'labels': [],
+                    'prices': [],
+                    'latest_price': None,
+                    'price_trend': 'stable',
+                    'price_change': 0
+                }
+            }, 200
+        
+        # Prepare chart data
+        labels = []
+        prices = []
+        valid_logs = []
+        
+        for log in logs:
+            if log.price is not None:
+                labels.append(log.timestamp.strftime('%Y-%m-%d %H:%M'))
+                prices.append(float(log.price))
+                valid_logs.append({
+                    'id': log.id,
+                    'timestamp': log.timestamp.isoformat(),
+                    'price': float(log.price),
+                    'name': log.name
+                })
+        
+        # Calculate price trend and change
+        latest_price = prices[-1] if prices else None
+        price_trend = 'stable'
+        price_change = 0
+        
+        if len(prices) >= 2:
+            first_price = prices[0]
+            last_price = prices[-1]
+            price_change = last_price - first_price
+            
+            if price_change > 0:
+                price_trend = 'increasing'
+            elif price_change < 0:
+                price_trend = 'decreasing'
+        
+        return {
+            'product_crawl': {
+                'id': product_crawl.id,
+                'link': product_crawl.link,
+                'product': product_crawl.product.name if product_crawl.product else None,
+                'enemy': product_crawl.enemy.name if product_crawl.enemy else None
+            },
+            'price_history': valid_logs,
+            'chart_data': {
+                'labels': labels,
+                'prices': prices,
+                'latest_price': float(latest_price) if latest_price is not None else None,
+                'price_trend': price_trend,
+                'price_change': float(price_change) if price_change != 0 else 0,
+                'total_records': len(valid_logs)
+            }
+        }, 200

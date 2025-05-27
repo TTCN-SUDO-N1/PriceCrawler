@@ -38,12 +38,62 @@ product_info_output_model = api.model('ProductInfoOutput', {
     'cur_price': fields.Float(description='Current price'),
 })
 
+pagination_model = api.model('Pagination', {
+    'page': fields.Integer(description='Current page number'),
+    'per_page': fields.Integer(description='Items per page'),
+    'total': fields.Integer(description='Total number of items'),
+    'pages': fields.Integer(description='Total number of pages'),
+    'has_prev': fields.Boolean(description='Has previous page'),
+    'has_next': fields.Boolean(description='Has next page'),
+})
+
+product_list_output_model = api.model('ProductListOutput', {
+    'products': fields.List(fields.Nested(product_output_model), description='List of products'),
+    'pagination': fields.Nested(pagination_model, description='Pagination information'),
+})
+
 @api.route('/')
 class ProductList(Resource):
-    @api.doc('list_products', description='Get a list of all products')
-    @api.marshal_list_with(product_output_model)
+    @api.doc('list_products', description='Get a list of all products with search and pagination')
+    @api.param('search', 'Search products by name or SKU', _in='query')
+    @api.param('page', 'Page number (default: 1)', _in='query')
+    @api.param('per_page', 'Items per page (default: 10, max: 100)', _in='query')
+    @api.marshal_with(product_list_output_model)
     def get(self):
-        return Product.query.all(), 200
+        search = request.args.get('search', '').strip()
+        page = int(request.args.get('page', 1))
+        per_page = min(int(request.args.get('per_page', 10)), 100)  # Max 100 items per page
+        
+        # Build query with search filter
+        query = Product.query
+        if search:
+            search_filter = f'%{search}%'
+            query = query.filter(
+                (Product.name.ilike(search_filter)) | 
+                (Product.sku.ilike(search_filter))
+            )
+        
+        # Apply pagination
+        paginated = query.paginate(
+            page=page, 
+            per_page=per_page, 
+            error_out=False
+        )
+        
+        # Return products with pagination metadata
+        result = {
+            'products': paginated.items,
+            'pagination': {
+                'page': paginated.page,
+                'per_page': paginated.per_page,
+                'total': paginated.total,
+                'pages': paginated.pages,
+                'has_prev': paginated.has_prev,
+                'has_next': paginated.has_next
+            }
+        }
+        
+        return result, 200
 
     @api.expect(product_input_model)
     @api.marshal_with(product_output_model, code=201)

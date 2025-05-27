@@ -6,15 +6,41 @@
     <title>Product Crawl Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
 <body class="bg-gray-100 p-6">
     <div class="flex justify-between items-center mb-4">
         <h1 class="text-2xl font-bold text-gray-800">📊 Báo cáo Sản phẩm</h1>
-        <button onclick="openAddProductModal()"
-            class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">➕ Thêm sản phẩm gốc</button>
-        <button onclick="refreshData()"
-            class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">🔄 Làm mới</button>
+        <div class="flex space-x-2">
+            <button onclick="openAddProductModal()"
+                class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">➕ Thêm sản phẩm gốc</button>
+            <button onclick="refreshData()"
+                class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">🔄 Làm mới</button>
+        </div>
+    </div>
+
+    <!-- Search and Filter Section -->
+    <div class="bg-white rounded-lg p-4 mb-6 shadow-sm border">
+        <div class="flex items-center space-x-4">
+            <div class="flex-1">
+                <label class="block text-sm font-medium text-gray-700 mb-2">🔍 Tìm kiếm sản phẩm</label>
+                <input type="text" id="searchInput" 
+                    class="w-full border border-gray-300 rounded px-3 py-2" 
+                    placeholder="Tìm theo tên sản phẩm hoặc SKU..."
+                    onkeyup="handleSearchKeyup(event)">
+            </div>
+            <div class="pt-6">
+                <button onclick="searchProducts()" 
+                    class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                    🔍 Tìm kiếm
+                </button>
+                <button onclick="clearSearch()" 
+                    class="bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500 ml-2">
+                    ✖️ Xóa
+                </button>
+            </div>
+        </div>
     </div>
 
     <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
@@ -33,6 +59,19 @@
 
     <div id="productsContainer">
         <div class="text-center py-10 text-gray-500">Loading products...</div>
+    </div>
+    
+    <!-- Pagination Controls -->
+    <div id="paginationContainer" class="mt-4 flex justify-center items-center space-x-2 hidden">
+        <button id="prevPageBtn" onclick="goToPage(currentPage - 1)" 
+            class="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed">
+            ← Trước
+        </button>
+        <span id="pageInfo" class="px-4 py-2 text-gray-700"></span>
+        <button id="nextPageBtn" onclick="goToPage(currentPage + 1)" 
+            class="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed">
+            Sau →
+        </button>
     </div>
     <div id="enemiesContainer" class="mt-8"></div>
     <div id="logsContainer" class="mt-8"></div>
@@ -117,21 +156,73 @@
         </div>
     </div>
 
+    <!-- Price History Modal -->
+    <div id="priceHistoryModal"
+        class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 w-full max-w-4xl shadow-xl max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-semibold" id="priceHistoryTitle">Lịch sử giá sản phẩm</h3>
+                <button onclick="closePriceHistoryModal()" class="text-gray-500 hover:text-gray-700 text-2xl">×</button>
+            </div>
+            
+            <div id="priceHistoryContent" class="space-y-4">
+                <div class="text-center py-10 text-gray-500">Loading price history...</div>
+            </div>
+            
+            <div class="flex justify-end mt-6">
+                <button onclick="closePriceHistoryModal()"
+                    class="px-4 py-2 bg-gray-400 text-white rounded hover:bg-gray-500">Đóng</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         let currentProductId = null;
         let currentEnemyId = null;
         let selectedProductId = null;
         let selectedEnemyId = null;
+        
+        // Pagination and search state
+        let currentPage = 1;
+        let currentSearch = '';
+        let totalPages = 1;
+        let itemsPerPage = 10;
+        let searchTimeout = null;
 
         document.addEventListener('DOMContentLoaded', function () {
             loadProducts();
         });
 
-        function loadProducts() {
-            axios.get('/api/product/')
+        function loadProducts(page = 1, search = '') {
+            // Build query parameters
+            const params = new URLSearchParams({
+                page: page,
+                per_page: itemsPerPage
+            });
+            
+            if (search.trim()) {
+                params.append('search', search.trim());
+            }
+            
+            axios.get(`/api/product/?${params.toString()}`)
                 .then(function (response) {
-                    const products = response.data;
+                    const data = response.data;
+                    const products = data.products || [];
+                    const pagination = data.pagination || {};
+                    
+                    // Update pagination state
+                    currentPage = pagination.page || 1;
+                    totalPages = pagination.pages || 1;
+                    currentSearch = search;
+                    
+                    // Update products display
                     const container = document.getElementById('productsContainer');
+                    if (products.length === 0) {
+                        container.innerHTML = '<div class="text-center py-10 text-gray-500">Không tìm thấy sản phẩm nào.</div>';
+                        document.getElementById('paginationContainer').classList.add('hidden');
+                        return;
+                    }
+                    
                     let html = `<table class="min-w-full text-sm text-left text-gray-700" id="productsTable">
                     <thead class="bg-gray-100">
                         <tr>
@@ -171,12 +262,261 @@
                     });
                     html += '</tbody></table>';
                     container.innerHTML = html;
+                    
+                    // Update pagination controls
+                    updatePaginationControls(pagination);
+                    
+                    // Clear other containers
                     document.getElementById('enemiesContainer').innerHTML = '';
                     document.getElementById('logsContainer').innerHTML = '';
                 })
                 .catch(function (error) {
                     document.getElementById('productsContainer').innerHTML = '<div class="text-center py-10 text-red-500">Lỗi khi tải sản phẩm. Vui lòng thử lại.</div>';
                 });
+        }
+
+        // Search and pagination functions
+        function handleSearchKeyup(event) {
+            if (event.key === 'Enter') {
+                searchProducts();
+                return;
+            }
+            
+            // Debounce search
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                searchProducts();
+            }, 500);
+        }
+
+        function searchProducts() {
+            const searchValue = document.getElementById('searchInput').value;
+            currentPage = 1; // Reset to first page
+            loadProducts(currentPage, searchValue);
+        }
+
+        function clearSearch() {
+            document.getElementById('searchInput').value = '';
+            currentPage = 1;
+            currentSearch = '';
+            loadProducts(currentPage, '');
+        }
+
+        function goToPage(page) {
+            if (page < 1 || page > totalPages) return;
+            loadProducts(page, currentSearch);
+        }
+
+        function updatePaginationControls(pagination) {
+            const paginationContainer = document.getElementById('paginationContainer');
+            const prevBtn = document.getElementById('prevPageBtn');
+            const nextBtn = document.getElementById('nextPageBtn');
+            const pageInfo = document.getElementById('pageInfo');
+
+            if (pagination.pages <= 1) {
+                paginationContainer.classList.add('hidden');
+                return;
+            }
+
+            paginationContainer.classList.remove('hidden');
+            
+            // Update page info
+            pageInfo.textContent = `Trang ${pagination.page} / ${pagination.pages} (${pagination.total} sản phẩm)`;
+            
+            // Update button states
+            prevBtn.disabled = !pagination.has_prev;
+            nextBtn.disabled = !pagination.has_next;
+            
+            if (prevBtn.disabled) {
+                prevBtn.classList.add('bg-gray-400', 'cursor-not-allowed');
+                prevBtn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+            } else {
+                prevBtn.classList.remove('bg-gray-400', 'cursor-not-allowed');
+                prevBtn.classList.add('bg-blue-600', 'hover:bg-blue-700');
+            }
+            
+            if (nextBtn.disabled) {
+                nextBtn.classList.add('bg-gray-400', 'cursor-not-allowed');
+                nextBtn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+            } else {
+                nextBtn.classList.remove('bg-gray-400', 'cursor-not-allowed');
+                nextBtn.classList.add('bg-blue-600', 'hover:bg-blue-700');
+            }
+        }
+
+        // Price History functions
+        function openPriceHistoryModal(productCrawlId) {
+            document.getElementById('priceHistoryModal').classList.remove('hidden');
+            document.getElementById('priceHistoryModal').classList.add('flex');
+            document.getElementById('priceHistoryContent').innerHTML = '<div class="text-center py-10 text-gray-500">⏳ Đang tải lịch sử giá...</div>';
+            
+            loadPriceHistory(productCrawlId);
+        }
+
+        function closePriceHistoryModal() {
+            document.getElementById('priceHistoryModal').classList.add('hidden');
+            document.getElementById('priceHistoryModal').classList.remove('flex');
+        }
+
+        function loadPriceHistory(productCrawlId) {
+            axios.get(`/api/product-crawl-logs/price-history/${productCrawlId}`)
+                .then(function (response) {
+                    const data = response.data;
+                    const container = document.getElementById('priceHistoryContent');
+                    
+                    // Update title
+                    document.getElementById('priceHistoryTitle').textContent = 
+                        `Lịch sử giá - ${data.product_crawl.product || 'Sản phẩm'} (${data.product_crawl.enemy || 'Đối thủ'})`;
+                    
+                    let html = '';
+                    
+                    // Show summary info
+                    const chartData = data.chart_data;
+                    if (chartData && chartData.total_records > 0) {
+                        const trendColor = chartData.price_trend === 'increasing' ? 'text-red-600' : 
+                                         chartData.price_trend === 'decreasing' ? 'text-green-600' : 'text-gray-600';
+                        const trendIcon = chartData.price_trend === 'increasing' ? '📈' : 
+                                        chartData.price_trend === 'decreasing' ? '📉' : '➡️';
+                        
+                        html += `
+                        <div class="bg-gray-50 p-4 rounded-lg mb-4">
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                                <div>
+                                    <div class="text-sm text-gray-600">Giá mới nhất</div>
+                                    <div class="text-lg font-bold">${chartData.latest_price ? chartData.latest_price.toLocaleString() + ' VND' : 'N/A'}</div>
+                                </div>
+                                <div>
+                                    <div class="text-sm text-gray-600">Xu hướng</div>
+                                    <div class="text-lg font-bold ${trendColor}">${trendIcon} ${chartData.price_trend === 'increasing' ? 'Tăng' : chartData.price_trend === 'decreasing' ? 'Giảm' : 'Ổn định'}</div>
+                                </div>
+                                <div>
+                                    <div class="text-sm text-gray-600">Thay đổi</div>
+                                    <div class="text-lg font-bold ${chartData.price_change >= 0 ? 'text-red-600' : 'text-green-600'}">
+                                        ${chartData.price_change >= 0 ? '+' : ''}${chartData.price_change ? chartData.price_change.toLocaleString() : '0'} VND
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="text-sm text-gray-600">Số bản ghi</div>
+                                    <div class="text-lg font-bold">${chartData.total_records}</div>
+                                </div>
+                            </div>
+                        </div>`;
+                        
+                        // Add chart container
+                        html += `
+                        <div class="mb-6">
+                            <h4 class="text-lg font-semibold mb-3">Biểu đồ giá theo thời gian</h4>
+                            <div class="relative">
+                                <canvas id="priceChart" width="400" height="200"></canvas>
+                            </div>
+                        </div>`;
+                    }
+                    
+                    // Show detailed history
+                    if (data.price_history && data.price_history.length > 0) {
+                        html += `
+                        <div>
+                            <h4 class="text-lg font-semibold mb-3">Lịch sử chi tiết</h4>
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full text-sm">
+                                    <thead class="bg-gray-100">
+                                        <tr>
+                                            <th class="px-4 py-2 text-left">Thời gian</th>
+                                            <th class="px-4 py-2 text-left">Tên sản phẩm</th>
+                                            <th class="px-4 py-2 text-right">Giá</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>`;
+                        
+                        data.price_history.reverse().forEach(log => {
+                            const date = new Date(log.timestamp);
+                            const formattedDate = date.toLocaleDateString('vi-VN') + ' ' + date.toLocaleTimeString('vi-VN');
+                            html += `
+                                <tr class="border-b">
+                                    <td class="px-4 py-2">${formattedDate}</td>
+                                    <td class="px-4 py-2">${log.name || 'N/A'}</td>
+                                    <td class="px-4 py-2 text-right font-mono">${log.price ? log.price.toLocaleString() + ' VND' : 'N/A'}</td>
+                                </tr>`;
+                        });
+                        
+                        html += `
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>`;
+                    } else {
+                        html += '<div class="text-center py-10 text-gray-500">Chưa có lịch sử giá nào.</div>';
+                    }
+                    
+                    container.innerHTML = html;
+                    
+                    // Create chart if data exists
+                    if (chartData && chartData.labels && chartData.labels.length > 0) {
+                        setTimeout(() => {
+                            createPriceChart(chartData);
+                        }, 100);
+                    }
+                })
+                .catch(function (error) {
+                    console.error('Error loading price history:', error);
+                    document.getElementById('priceHistoryContent').innerHTML = '<div class="text-center py-10 text-red-500">Lỗi khi tải lịch sử giá.</div>';
+                });
+        }
+
+        function createPriceChart(chartData) {
+            const ctx = document.getElementById('priceChart');
+            if (!ctx) return;
+            
+            // Destroy existing chart if it exists
+            if (window.priceChartInstance) {
+                window.priceChartInstance.destroy();
+            }
+            
+            window.priceChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: chartData.labels,
+                    datasets: [{
+                        label: 'Giá (VND)',
+                        data: chartData.prices,
+                        borderColor: 'rgb(59, 130, 246)',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `Giá: ${context.parsed.y.toLocaleString()} VND`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            ticks: {
+                                callback: function(value) {
+                                    return value.toLocaleString() + ' VND';
+                                }
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                maxTicksLimit: 10
+                            }
+                        }
+                    }
+                }
+            });
         }
 
         function selectProduct(productId, row) {
@@ -323,6 +663,7 @@
                                                     <button onclick="event.stopPropagation(); openEditEnemyModal(${productId},${crawl.id},'${crawl.link}')" class="bg-yellow-400 text-white px-2 py-1 rounded">✏️</button>
                                                     <button onclick="event.stopPropagation(); deleteEnemy(${productId},${crawl.id})" class="bg-red-500 text-white px-2 py-1 rounded">🗑️</button>
                                                     <button onclick="event.stopPropagation(); crawlEnemy(${crawl.id})" class="bg-blue-600 text-white px-2 py-1 rounded">🔄 Crawl</button>
+                                                    <button onclick="event.stopPropagation(); openPriceHistoryModal(${crawl.id})" class="bg-purple-600 text-white px-2 py-1 rounded">📈 Lịch sử</button>
                                                 </td>
                                             </tr>`;
                                         });
@@ -836,12 +1177,17 @@
             selectedProductId = null;
             selectedEnemyId = null;
             
+            // Reset pagination and search state
+            currentPage = 1;
+            currentSearch = '';
+            document.getElementById('searchInput').value = '';
+            
             // Clear display containers
             document.getElementById('enemiesContainer').innerHTML = '';
             document.getElementById('logsContainer').innerHTML = '';
             
-            // Reload products
-            loadProducts();
+            // Reload products with pagination
+            loadProducts(currentPage, currentSearch);
         }
 
         // Implement product and enemy crawling functions
