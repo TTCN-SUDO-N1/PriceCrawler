@@ -120,7 +120,7 @@ class ProductCrawlPriceHistory(Resource):
                 valid_logs.append({
                     'id': log.id,
                     'timestamp': log.timestamp.isoformat(),
-                    'price': log.price,
+                    'price': float(log.price),
                     'name': log.name
                 })
         
@@ -150,9 +150,9 @@ class ProductCrawlPriceHistory(Resource):
             'chart_data': {
                 'labels': labels,
                 'prices': prices,
-                'latest_price': latest_price,
+                'latest_price': float(latest_price) if latest_price is not None else None,
                 'price_trend': price_trend,
-                'price_change': price_change,
+                'price_change': float(price_change) if price_change != 0 else 0,
                 'total_records': len(valid_logs)
             }
         }, 200
