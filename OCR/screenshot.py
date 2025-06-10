@@ -44,7 +44,7 @@ def scrape(url):
         options.add_argument("--disable-extensions")
         options.add_argument("--disable-infobars")
         # Set window size for Chrome
-        # options.add_argument("--window-size=1366,768")
+        options.add_argument("--window-size=1366,768")
         driver = webdriver.Chrome(service=Service(webDriverPath), options=options)
         print("Using Chrome WebDriver")
     else:
