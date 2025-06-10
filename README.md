@@ -59,7 +59,10 @@
     ```
 6. Access the API at `http://localhost:5000/index`.
 
-## API Endpoints
+<div align="center">
+  <img src="https://www.svgrepo.com/show/375357/cloud-endpoints.svg" width="64"><img>
+  <h2>API ENDPOINTS</h2>
+</div>
 
 Access the API documentation at `http://localhost:5000/api` to explore available endpoints and their details.
 
@@ -122,7 +125,9 @@ Access the API documentation at `http://localhost:5000/api` to explore available
 - **DELETE /api/product_crawl_log/{id}** - Delete a log by ID
 - **GET /api/product_crawl_log/price-history/{product_crawl_id}** - Get price history with chart data for a product crawl
 
-## API Features
+<div align="center">
+  <h2>API FEATURES</h2>
+</div>
 
 ### Product Management
 - **Search and Pagination**: Products can be searched by name or SKU with pagination support
@@ -145,7 +150,10 @@ Access the API documentation at `http://localhost:5000/api` to explore available
 - **Statistics**: Price trend analysis (increasing/decreasing/stable)
 - **Color-coded Analysis**: Smart color coding for price comparisons
 
-## Response Formats
+<div align="center">
+  <h2>Response Formats</h2>
+</div>
+
 
 ### Pagination Response
 ```json
@@ -182,8 +190,10 @@ Access the API documentation at `http://localhost:5000/api` to explore available
   }
 }
 ```
+<div align="center">
+  <h2>API Usage Examples</h2>
+</div>
 
-## API Usage Examples
 
 ### Create a new product
 ```bash
