@@ -81,8 +81,8 @@ def scrape(url):
         image = cv.imread(domain+"_"+timestamp+".png")
         gray = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
         cv.imwrite(domain+"_"+timestamp+".png", gray)
-        responseJson= ExtractTxt.Extract(domain+"_"+timestamp+".png")
-        os.remove(domain+"_"+timestamp+".png")
+        # responseJson= ExtractTxt.Extract(domain+"_"+timestamp+".png")
+        # os.remove(domain+"_"+timestamp+".png")
         
         
     except Exception as e:
@@ -114,14 +114,12 @@ def scrape(url):
             print(f"Error converting price: {price_str}, Error: {e}")
             return 0.0
     
-    print("Response JSON:", responseJson)
-    if 'promotional_price' in responseJson:
-        responseJson['promotional_price'] = clean_price_string(responseJson['promotional_price'])
-    if 'current_price' in responseJson:
-        responseJson['current_price'] = clean_price_string(responseJson['current_price'])
-    return responseJson
-
-
+    # print("Response JSON:", responseJson)
+    # if 'promotional_price' in responseJson:
+    #     responseJson['promotional_price'] = clean_price_string(responseJson['promotional_price'])
+    # if 'current_price' in responseJson:
+    #     responseJson['current_price'] = clean_price_string(responseJson['current_price'])
+    # return responseJson
 def process_urls_in_batches(urls, batch_size=3):
     """Process URLs in batches with concurrent execution"""
     

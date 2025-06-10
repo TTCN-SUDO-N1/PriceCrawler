@@ -647,18 +647,79 @@
                                             };
                                         });
                                         
+                                        // Calculate price statistics
+                                        const validPrices = priceData
+                                            .map(data => data.latestPrice)
+                                            .filter(price => price !== null && price !== undefined && price > 0);
+                                        
+                                        let priceStatsHtml = '';
+                                        if (validPrices.length > 0) {
+                                            const highestPrice = Math.max(...validPrices);
+                                            const lowestPrice = Math.min(...validPrices);
+                                            const avgPrice = validPrices.reduce((sum, price) => sum + price, 0) / validPrices.length;
+                                            
+                                            // Get original product price for comparison
+                                            const originalPrice = product.cur_price || product.org_price;
+                                            
+                                            // Helper function to get color class based on comparison with original
+                                            const getPriceColorClass = (price, original) => {
+                                                if (!original || original === 0) return 'text-gray-600';
+                                                return price < original ? 'text-green-600' : 'text-red-600';
+                                            };
+                                            
+                                            priceStatsHtml = `
+                                            <div class="bg-blue-50 p-3 rounded-lg mb-3 border border-blue-200">
+                                                <h4 class="font-semibold text-blue-800 mb-2">📊 Thống kê giá đối thủ</h4>
+                                                <div class="grid grid-cols-3 gap-4 text-sm">
+                                                    <div class="text-center">
+                                                        <div class="text-gray-600">Giá cao nhất</div>
+                                                        <div class="font-bold ${getPriceColorClass(highestPrice, originalPrice)}">
+                                                            ${highestPrice.toLocaleString()} VND
+                                                        </div>
+                                                    </div>
+                                                    <div class="text-center">
+                                                        <div class="text-gray-600">Giá thấp nhất</div>
+                                                        <div class="font-bold ${getPriceColorClass(lowestPrice, originalPrice)}">
+                                                            ${lowestPrice.toLocaleString()} VND
+                                                        </div>
+                                                    </div>
+                                                    <div class="text-center">
+                                                        <div class="text-gray-600">Giá trung bình</div>
+                                                        <div class="font-bold ${getPriceColorClass(avgPrice, originalPrice)}">
+                                                            ${Math.round(avgPrice).toLocaleString()} VND
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                ${originalPrice ? `
+                                                <div class="mt-2 text-xs text-gray-600 text-center">
+                                                    So với giá gốc: ${originalPrice.toLocaleString()} VND 
+                                                    (<span class="text-green-600">Xanh = Thấp hơn</span>, <span class="text-red-600">Đỏ = Cao hơn</span>)
+                                                </div>
+                                                ` : ''}
+                                            </div>`;
+                                        }
+                                        
+                                        html += priceStatsHtml;
+                                        
                                         // Now build the table with the price data
                                         crawls.forEach(crawl => {
                                             const priceInfo = priceMap[crawl.id] || { price: null, name: null };
                                             const displayName = priceInfo.name || product.name || "Sản phẩm";
                                             const displayPrice = priceInfo.price ? `${priceInfo.price.toLocaleString()} VND` : 'Chưa có giá';
                                             
+                                            // Color code the price cell based on comparison with original
+                                            const originalPrice = product.cur_price || product.org_price;
+                                            let priceColorClass = '';
+                                            if (priceInfo.price && originalPrice) {
+                                                priceColorClass = priceInfo.price < originalPrice ? 'text-green-600 font-bold' : 'text-red-600 font-bold';
+                                            }
+                                            
                                             html += `<tr class="cursor-pointer hover:bg-blue-50 enemy-row" data-enemy-id="${crawl.id}" onclick="selectEnemy(${crawl.id}, this)">
                                                 <td>
                                                     <a href="${crawl.link}" target="_blank" class="text-blue-600 hover:underline" onclick="event.stopPropagation()">${displayName}</a>
                                                 </td>
                                                 <td>${crawl.enemy ? crawl.enemy.name : ''}</td>
-                                                <td>${displayPrice}</td>
+                                                <td class="${priceColorClass}">${displayPrice}</td>
                                                 <td class="text-center space-x-1">
                                                     <button onclick="event.stopPropagation(); openEditEnemyModal(${productId},${crawl.id},'${crawl.link}')" class="bg-yellow-400 text-white px-2 py-1 rounded">✏️</button>
                                                     <button onclick="event.stopPropagation(); deleteEnemy(${productId},${crawl.id})" class="bg-red-500 text-white px-2 py-1 rounded">🗑️</button>

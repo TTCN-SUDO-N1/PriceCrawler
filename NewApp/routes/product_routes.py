@@ -5,7 +5,7 @@ from NewApp.models import Product
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../OCR')))
-from OCR.screenshot import scrape
+from OCR.screenshot import scrape,process_urls_in_batches
 
 api = Namespace('product', description='Product related operations')
 
