@@ -601,6 +601,7 @@
                             
                             if (!crawls || crawls.length === 0) {
                                 html += '<div class="text-center py-4 text-gray-500 bg-gray-50 rounded border border-gray-200">Không tìm thấy sản phẩm đối thủ nào. Hãy thêm mới!</div>';
+                                container.innerHTML = html;
                             } else {
                                 html += `<table class="min-w-full text-sm text-left text-gray-700">
                                 <thead class="bg-gray-100">
@@ -738,12 +739,23 @@
                 .catch(function (error) {
                     console.error('Error loading enemy products:', error);
                     
+                    // Always show the header with buttons, even on error
+                    let html = `<div class='mb-2 flex justify-between items-center'>
+                        <h3 class='font-bold text-lg'>Sản phẩm đối thủ</h3>
+                        <div class="flex space-x-2">
+                            <button onclick="crawlAllEnemies(${productId});event.stopPropagation();" class="bg-blue-600 text-white px-3 py-1 rounded" id="crawlAllButton-${productId}">🔄 Crawl All</button>
+                            <button onclick="openEnemyModal(${productId});event.stopPropagation();" class="bg-green-600 text-white px-3 py-1 rounded">➕ Thêm đối thủ</button>
+                        </div>
+                    </div>`;
+                    
                     // Check if the error is a 404 Not Found (meaning no products found)
                     if (error.response && error.response.status === 404) {
-                        container.innerHTML = '<div class="text-center py-4 text-gray-500 bg-gray-50 rounded border border-gray-200">Không tìm thấy sản phẩm đối thủ nào. Hãy thêm mới!</div>';
+                        html += '<div class="text-center py-4 text-gray-500 bg-gray-50 rounded border border-gray-200">Không tìm thấy sản phẩm đối thủ nào. Hãy thêm mới!</div>';
                     } else {
-                        container.innerHTML = '<div class="text-center py-5 text-red-500">Lỗi khi tải sản phẩm đối thủ.</div>';
+                        html += '<div class="text-center py-5 text-red-500">Lỗi khi tải sản phẩm đối thủ.</div>';
                     }
+                    
+                    container.innerHTML = html;
                 });
         }
         
