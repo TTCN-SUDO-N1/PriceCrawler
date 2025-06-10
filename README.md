@@ -1,18 +1,38 @@
-# Product Price Crawler API
+# 
+<div align="center">
+  <img src="https://images.emojiterra.com/google/noto-emoji/unicode-16.0/color/svg/1f4ca.svg" width="64">
+   <h1>Product Price Crawler</h4>
+</div>
+<div align="center">
+  <p align="center">A tool for quick and easy price crawler for competitors website's product </p>
+  
+  [![Activity Status](https://img.shields.io/github/commit-activity/w/TTCN-SUDO-N1/PriceCrawler)]
+  [![GitHub contributors](https://img.shields.io/github/contributors/TTCN-SUDO-N1/PriceCrawler)]
 
-This API provides endpoints to manage products, competitor websites (enemies), product crawls, and product crawl logs.
+  <sup>Written with python</sup>
+  
+![Screenshot of the main GUI (dark mode)](https://github.com/user-attachments/assets/034bb06d-5222-41d3-abac-6ea3abf2fc7e)
+![Screenshot of the main GUI (light mode)](https://github.com/user-attachments/assets/30367119-22c2-4584-a152-635cb5c97b1a)
+
+</div>
 
 ## Setup
 
 1. Clone the repository:
    ```bash
    git clone https://github.com/TTCN-SUDO-N1/PriceCrawler
+   ```
+   ```
    cd PriceCrawler
    ```
 2. Create a python virtual environment and install dependencies:
-   ```bash
+   ```python
    python -m venv venv
+   ```
+   ```bash
    source venv/bin/activate  # On Windows use `venv\Scripts\activate`
+   ```
+   ```python
    pip install -r requirements.txt
    ```
 3. Set up .env file:
@@ -24,9 +44,13 @@ This API provides endpoints to manage products, competitor websites (enemies), p
     - Ensure you have a MySQL database running.
     - Create a database and user as specified in the `.env` file.
     - Run the migrations to set up the database schema:
-      ```bash
+      ```python
       flask db init
+      ```
+      ```python
       flask db migrate -m "Initial migration"
+      ```
+      ```python
       flask db upgrade
       ```
 5. Run the application:
