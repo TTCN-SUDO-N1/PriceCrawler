@@ -18,7 +18,7 @@ chromeOrFirefox = os.getenv("CHROME_OR_FIREFOX")
 
 def scrape(url):
     print("Scraping URL:", url)
-    
+    extension_path = "/mnt/01DB783D25219E60/HOMEWORK/ThucTap/CaoGia/OCR/uBlock.signed.xpi"
     webDriverPath = DriverPath
     if chromeOrFirefox == "firefox":
         from selenium.webdriver.firefox.service import Service
@@ -64,6 +64,7 @@ def scrape(url):
         driver = webdriver.Firefox(service=Service(webDriverPath), options=options)
         print("Using Firefox WebDriver")
     try:
+        driver.install_addon(extension_path, temporary=True)
         driver.get(url)
         sleep(3)
         try:
