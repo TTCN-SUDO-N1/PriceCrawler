@@ -1520,7 +1520,7 @@
             
             // Disable crawl button
             const crawlBtn = document.querySelector('#addProductModal button[onclick="detectProductInfo()"]');
-            const originalText = crawlBtn.innerHTML;
+            const originalBtnText = crawlBtn.innerHTML;
             crawlBtn.innerHTML = '⏳ Đang crawl...';
             crawlBtn.disabled = true;
             
@@ -1547,13 +1547,13 @@
                     }
                     
                     statusDiv.innerHTML = '<span class="text-green-600">✓ Crawl thành công</span>';
-                    crawlBtn.innerHTML = originalText;
+                    crawlBtn.innerHTML = originalBtnText;
                     crawlBtn.disabled = false;
                 })
                 .catch(function(error) {
                     console.error('Error extracting product info:', error);
                     statusDiv.innerHTML = '<span class="text-red-600">✗ Lỗi khi crawl thông tin</span>';
-                    crawlBtn.innerHTML = originalText;
+                    crawlBtn.innerHTML = originalBtnText;
                     crawlBtn.disabled = false;
                     alert('Không thể crawl thông tin. Vui lòng kiểm tra link hoặc thử lại sau.');
                 });
@@ -1583,6 +1583,46 @@
             document.getElementById('detectProductStatus').innerHTML = '';
         }
     </script>
+
+    <script>
+        function tagProductForReminder(productId) {
+            const email = prompt("Enter your email to receive price alerts:");
+            if (!email) {
+                alert("Email is required to set a reminder.");
+                return;
+            }
+
+            axios.post(`/api/reminder/products/${productId}/set-reminder`, { email })
+                .then(response => {
+                    alert(response.data.message);
+                })
+                .catch(error => {
+                    alert("Failed to set reminder. Please try again.");
+                });
+        }
+
+        function scheduleCrawl() {
+            const hours = prompt("Enter the number of hours after which to schedule the crawl:");
+            if (!hours || isNaN(hours)) {
+                alert("Please enter a valid number of hours.");
+                return;
+            }
+
+            axios.post(`/api/reminder/schedule-crawl`, { hours })
+                .then(response => {
+                    alert(response.data.message);
+                })
+                .catch(error => {
+                    alert("Failed to schedule crawl. Please try again.");
+                });
+        }
+    </script>
+
+    <!-- Add buttons for tagging and scheduling -->
+    <div class="flex space-x-2">
+        <button onclick="tagProductForReminder(selectedProductId)" class="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600">🔔 Set Reminder</button>
+        <button onclick="scheduleCrawl()" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">⏳ Schedule Crawl</button>
+    </div>
 </body>
 
 </html>
