@@ -2,8 +2,6 @@ from NewApp import db
 import datetime
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import DeclarativeMeta
-import json
-
 
 class Product(db.Model):
     __tablename__ = 'products'
@@ -16,6 +14,7 @@ class Product(db.Model):
     cur_price = db.Column(db.Numeric(12, 2))
     created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+    reminder_email = db.Column(db.String(255))
     
     # Relationships
     product_crawls = relationship("ProductCrawl", back_populates="product", cascade="all, delete-orphan")

@@ -3,7 +3,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from time import sleep
 import os
-import ExtractTxt
+import OCR.ExtractTxt as ExtractTxt
 import time
 from dotenv import load_dotenv
 import os

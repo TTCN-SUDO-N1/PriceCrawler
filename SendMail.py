@@ -23,7 +23,7 @@ def send_mail_with_product_info(to, subject, body, product_name, enemy_name, ene
     msg['Subject'] = subject
 
     # Create the email body with product information
-    product_info = f"Original Product: {product_name}\nEnemy Product: {enemy_name}\nEnemy Price: {enemy_price}\nOriginal Price: {original_price}\n\n{body}"
+    product_info = f"Original Product: {product_name}\nEnemy Product: {enemy_name}\nEnemy Price: {enemy_price}\nCurrent Product Original Price: {original_price}\n\n{body}"
     msg.attach(MIMEText(product_info, 'plain'))
 
     try:

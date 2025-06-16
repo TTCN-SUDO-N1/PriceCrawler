@@ -665,7 +665,7 @@
                                             // Helper function to get color class based on comparison with original
                                             const getPriceColorClass = (price, original) => {
                                                 if (!original || original === 0) return 'text-gray-600';
-                                                return price < original ? 'text-green-600' : 'text-red-600';
+                                                return price > original ? 'text-green-600' : 'text-red-600';
                                             };
                                             
                                             priceStatsHtml = `
@@ -694,7 +694,7 @@
                                                 ${originalPrice ? `
                                                 <div class="mt-2 text-xs text-gray-600 text-center">
                                                     So với giá gốc: ${originalPrice.toLocaleString()} VND 
-                                                    (<span class="text-green-600">Xanh = Thấp hơn</span>, <span class="text-red-600">Đỏ = Cao hơn</span>)
+                                                    (<span class="text-red-600">Đỏ = Thấp hơn</span>, <span class="text-green-600">Xanh = Cao hơn</span>)
                                                 </div>
                                                 ` : ''}
                                             </div>`;
@@ -712,7 +712,7 @@
                                             const originalPrice = product.cur_price || product.org_price;
                                             let priceColorClass = '';
                                             if (priceInfo.price && originalPrice) {
-                                                priceColorClass = priceInfo.price < originalPrice ? 'text-green-600 font-bold' : 'text-red-600 font-bold';
+                                                priceColorClass = priceInfo.price < originalPrice ? 'text-red-600 font-bold' : 'text-green-600 font-bold';
                                             }
                                             
                                             html += `<tr class="cursor-pointer hover:bg-blue-50 enemy-row" data-enemy-id="${crawl.id}" onclick="selectEnemy(${crawl.id}, this)">
@@ -1520,7 +1520,7 @@
             
             // Disable crawl button
             const crawlBtn = document.querySelector('#addProductModal button[onclick="detectProductInfo()"]');
-            const originalBtnText = crawlBtn.innerHTML;
+            const originalText = crawlBtn.innerHTML;
             crawlBtn.innerHTML = '⏳ Đang crawl...';
             crawlBtn.disabled = true;
             
@@ -1547,13 +1547,13 @@
                     }
                     
                     statusDiv.innerHTML = '<span class="text-green-600">✓ Crawl thành công</span>';
-                    crawlBtn.innerHTML = originalBtnText;
+                    crawlBtn.innerHTML = originalText;
                     crawlBtn.disabled = false;
                 })
                 .catch(function(error) {
                     console.error('Error extracting product info:', error);
                     statusDiv.innerHTML = '<span class="text-red-600">✗ Lỗi khi crawl thông tin</span>';
-                    crawlBtn.innerHTML = originalBtnText;
+                    crawlBtn.innerHTML = originalText;
                     crawlBtn.disabled = false;
                     alert('Không thể crawl thông tin. Vui lòng kiểm tra link hoặc thử lại sau.');
                 });
